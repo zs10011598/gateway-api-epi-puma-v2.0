@@ -1,6 +1,7 @@
 from django.urls import path
 from .views.index import *
 from .views.vaccines import *
+from .views.analysis_population import Covariables as CovPop, Cells as CelPop
 
 
 
@@ -9,4 +10,7 @@ urlpatterns = [
     path('vaccines/', Vaccines.as_view(), name='vaccines'),
     path('vaccines/mesh/', Mesh.as_view(), name='mesh'),
     path('vaccines/target-groups/', TargetGroups.as_view(), name='target'),
+
+	path('analysis-population/covariables/', CovPop.as_view(), name='cov_pop'),
+	path('analysis-population/cells/', CelPop.as_view(), name='cov_pop'),    
 ]
