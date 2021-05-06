@@ -100,6 +100,14 @@ DATABASES = {
         'NAME': os.environ['DBCOVI'],
         'USER': os.environ['DBUSER'],
         'PASSWORD': os.environ['DBPASS']
+    },
+    'mesh': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.environ['DBHOST'],
+        'PORT': os.environ['DBPORT'],
+        'NAME': os.environ['DBMESH'],
+        'USER': os.environ['DBUSER'],
+        'PASSWORD': os.environ['DBPASS']
     }
 }
 

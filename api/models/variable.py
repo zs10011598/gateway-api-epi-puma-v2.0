@@ -28,7 +28,7 @@ class VariableCOVID19(models.Model):
 class VariableINEGI2020(models.Model):
     name = models.CharField(max_length=100)
     interval = models.CharField(max_length=100)
-    bin = models.IntegerField(max_length=100)
+    bin = models.IntegerField()
     code = models.CharField(max_length=100)
     lim_inf = models.FloatField()
     lim_sup = models.FloatField()

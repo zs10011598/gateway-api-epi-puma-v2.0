@@ -7,6 +7,7 @@ from ..models.occurrence import *
 import numpy as np
 import pandas as pd
 from ..serializers.cell import *
+from sklearn.linear_model import LinearRegression
 
 ### Por el momento los grupos de covariables se incluyen completos y los target son de la base de COVID19
 
@@ -43,7 +44,7 @@ def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3
         map_cells_pobtot[getattr(cell, 'gridid_' + mesh)] = cell.pobtot
 
     target_filter = mesh_occurrence_condition(mesh, target_filter)
-    target_by_cell = Occurrence.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
+    target_by_cell = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
     map_cell_target = {}
 
     for tc in target_by_cell:
@@ -145,20 +146,67 @@ def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3
     return dict_results
 
 
-def calculate_score(dbs=['inegi2020'], target_filter={ 'variable_id__in': [2, 3], 
-                                                       'date_occurrence__lte': '2020-03-31',
-                                                       'date_occurrence__gte': '2020-03-01'}, mesh='mun'):
+def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
+                    lim_inf_training='2020-03-01', lim_sup_training='2020-03-31', 
+                    lim_inf_first=None, lim_sup_first=None, lim_inf_validation=None, lim_sup_validation=None):
     '''
     '''
+
+
+    if lim_inf_first != None and lim_sup_first != None:
+        target_filter_first = get_target_filter(mesh, lim_inf_first, lim_sup_first, target)
+        target_first = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter_first).annotate(tcount=Count('id'))
+        map_target_first = make_map(target_first, 'gridid_' + mesh, 'tcount')
+
+        epsilon = calculate_epsilon(dbs, target_filter_first, mesh)
+        s0_first = epsilon['s0'][0]
+        df_epsilon_first = pd.DataFrame(epsilon)
+    else:
+        map_target_first = None
+        s0_first = 0
+
+    if lim_inf_validation != None and lim_sup_validation != None:
+        target_filter_validation = get_target_filter(mesh, lim_inf_validation, lim_sup_validation, target)
+        target_validation = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter_validation).annotate(tcount=Count('id'))
+        map_target_validation = make_map(target_validation, 'gridid_' + mesh, 'tcount')
+    else:
+        map_target_validation = None
+
     map_cell_score = {}
+    target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target)
     epsilon = calculate_epsilon(dbs, target_filter, mesh)
     s0 = epsilon['s0'][0]
     df_epsilon = pd.DataFrame(epsilon)
     cells = get_mesh(mesh)
+    percentiles = 20
+
+    target_training = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
+    map_target_training = make_map(target_training, 'gridid_' + mesh, 'tcount')
 
     for cell in cells:
-        map_cell_score[getattr(cell, 'gridid_'  + mesh)] = {'score': s0, 'gridid': getattr(cell, 'gridid_'  + mesh)}
-        map_cell_score[getattr(cell, 'gridid_'  + mesh)]['cell'] = get_serialized_cell(cell, mesh)
+        gridid = getattr(cell, 'gridid_'  + mesh)
+        map_cell_score[gridid] = {'score_training': s0, 'gridid': gridid, 'pobtot': cell.pobtot}
+        map_cell_score[gridid]['cell'] = get_serialized_cell(cell, mesh)
+
+        if gridid in map_target_training.keys():
+                map_cell_score[gridid]['cases_training'] = map_target_training[gridid]
+        else:
+            map_cell_score[gridid]['cases_training'] = 0
+
+        if map_target_first != None:
+            if gridid in map_target_first.keys():
+                map_cell_score[gridid]['cases_first'] = map_target_first[gridid]
+            else:
+                map_cell_score[gridid]['cases_first'] = 0
+
+            map_cell_score[gridid]['score_first'] = s0_first
+
+        if map_target_validation != None:
+            if gridid in map_target_validation.keys():
+                map_cell_score[gridid]['cases_validation'] = map_target_validation[gridid]
+            else:
+                map_cell_score[gridid]['cases_validation'] = 0
+
 
     for db in dbs:
         
@@ -167,17 +215,118 @@ def calculate_score(dbs=['inegi2020'], target_filter={ 'variable_id__in': [2, 3]
 
         for covar in covars:
 
-            current_score = df_epsilon[(df_epsilon.node == db) & (df_epsilon.id == covar.id)].iloc[0].score
             cells_presence = getattr(covar, 'cells_' + mesh)
+            current_score = df_epsilon[(df_epsilon.node == db) & (df_epsilon.id == covar.id)].iloc[0].score
             
+            if map_target_first != None:
+                current_score_first = df_epsilon_first[(df_epsilon_first.node == db) & (df_epsilon_first.id == covar.id)].iloc[0].score
+            else:
+                current_score_first = 0       
+
             for gridid in cells_presence:
 
-                if gridid in map_cell_score.keys():
-                    map_cell_score[gridid]['score'] += current_score
-                else:
-                    map_cell_score[gridid]['score'] = current_score
+                map_cell_score[gridid]['score_training'] += current_score
 
-                #if db == 'inegi2020':
-                #    map_cell_score[gridid]['covars'].append({'name': covar.name + ' ' + covar.interval, 'score': current_score})
+                if map_target_first != None:
+                    map_cell_score[gridid]['score_first'] += current_score_first                    
 
-    return map_cell_score.values()
+    df_cells = pd.DataFrame(map_cell_score.values())
+    N = df_cells.pobtot.sum()
+    percentil_length = N / percentiles
+    
+    if map_target_first != None:
+
+        df_cells = df_cells.sort_values('score_first', ascending=False)
+        df_cells = df_cells.reset_index(drop=True)
+        p_first = []
+        percentil_first = []
+        aux_first = 0
+
+        cummulated_length = 0
+        for d in range(percentiles):
+            lower_first = aux_first
+            upper_first = aux_first
+            while cummulated_length < (d+1)*percentil_length:
+                cummulated_length += df_cells.iloc[upper_first].pobtot
+                upper_first += 1
+            aux_first = upper_first
+
+            cases_percentil_first = df_cells.iloc[lower_first:upper_first].cases_first.sum()
+            pobtot_percentil_first = df_cells.iloc[lower_first:upper_first].pobtot.sum()
+
+            p_first += [cases_percentil_first/pobtot_percentil_first for i in range(upper_first - lower_first)]
+            percentil_first += [percentiles - d for i in range(upper_first - lower_first)]
+
+        #print(len(p), len(percentil))
+        df_cells['p_first'] = pd.Series(p_first)
+        df_cells['percentil_first'] = pd.Series(percentil_first)
+
+    df_cells = df_cells.sort_values('score_training', ascending=False)
+    df_cells = df_cells.reset_index(drop=True)
+
+    p_training = []
+    percentil_training = []
+    aux_training = 0
+
+    cummulated_length = 0
+    for d in range(percentiles):
+        lower_training = aux_training
+        upper_training = aux_training
+        while cummulated_length < (d+1)*percentil_length:
+            cummulated_length += df_cells.iloc[upper_training].pobtot
+            upper_training += 1
+        aux_training = upper_training
+
+        cases_percentil_training = df_cells.iloc[lower_training:upper_training].cases_training.sum()
+        pobtot_percentil_training = df_cells.iloc[lower_training:upper_training].pobtot.sum()
+
+        p_training += [cases_percentil_training/pobtot_percentil_training for i in range(upper_training - lower_training)]
+        percentil_training += [percentiles - d for i in range(upper_training - lower_training)]
+
+    #print(len(p), len(percentil))
+    df_cells['p_training'] = pd.Series(p_training)
+    df_cells['percentil_training'] = pd.Series(percentil_training)
+
+    if map_target_first != None:
+        scores = np.array((df_cells['score_training'] - df_cells['score_first']).tolist())
+        probas = np.array((df_cells['p_training'] - df_cells['p_first']).tolist())
+
+        reg = LinearRegression()
+        reg.fit(scores.reshape(-1, 1), probas)
+
+        p_predicted_validation = reg.predict(scores.reshape(-1, 1))
+        df_cells['p_predicted_validation'] = df_cells['p_training'] + pd.Series(p_predicted_validation)
+
+        df_cells['cases_predicted_validation'] = (df_cells['pobtot'] - df_cells['cases_training'])*df_cells['p_predicted_validation']
+
+    return df_cells.to_dict(orient='records')
+
+
+def get_target_filter(mesh, lim_inf, lim_sup, target):
+    '''
+    '''
+    target_filter = {}
+    
+    target_filter = mesh_occurrence_condition(mesh, target_filter)
+
+    if target == 'CONFIRMADO' or target == 'FALLECIDO':
+        target_filter['variable_id__in'] = [2, 3]
+    elif target == 'NEGATIVO':
+        target_filter['variable_id__in'] = [5]
+    elif target == 'PRUEBA':
+        target_filter['variable_id__in'] = [1, 2, 3]
+
+    if target == 'FALLECIDO':
+        if lim_inf != -99999:
+            target_filter['fecha_def__gte'] = lim_inf
+        
+        if lim_sup != -99999:
+            target_filter['fecha_def__lte'] = lim_sup
+    else:
+        if lim_inf != -99999:
+            target_filter['date_occurrence__gte'] = lim_inf
+        
+        if lim_sup != -99999:
+            target_filter['date_occurrence__lte'] = lim_sup
+
+    return target_filter

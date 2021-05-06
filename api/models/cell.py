@@ -38,4 +38,8 @@ class CellAGEB(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'mesh_ageb'  
+        db_table = 'mesh_ageb'
+
+
+class GeomState(models.Model):
+    pass

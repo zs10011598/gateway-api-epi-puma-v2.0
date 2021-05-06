@@ -11,3 +11,4 @@ class VariableINEGI2020Serializer(serializers.Serializer):
     lim_inf = serializers.FloatField()
     lim_sup = serializers.FloatField()
     mesh = serializers.CharField(max_length=5)
+    

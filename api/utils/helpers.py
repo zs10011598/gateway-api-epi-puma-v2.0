@@ -38,3 +38,12 @@ def get_serialized_cell(cell, mesh):
         return CellMunicipalitySerializer(cell).data
     else:
         return CellAGEBSerializer(cell).data
+
+
+def make_map(qs, key, value):
+    '''
+    '''
+    map_qs = {}
+    for item in qs:
+        map_qs[item[key]] = item[value]
+    return map_qs
