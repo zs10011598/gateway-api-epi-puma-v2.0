@@ -41,7 +41,7 @@ class Covariables(APIView):
 
 		target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target)
 
-		computations  = calculate_epsilon(dbs, target_filter, mesh)
+		computations  = calculate_epsilon(dbs, target_filter, mesh, target)
 
 		N = len(computations['N'])
 		response = []

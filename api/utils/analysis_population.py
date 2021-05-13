@@ -12,8 +12,9 @@ from sklearn.linear_model import LinearRegression
 ### Por el momento los grupos de covariables se incluyen completos y los target son de la base de COVID19
 
 def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3], 
-                                                               'date_occurrence__lte': '2020-03-31',
-                                                               'date_occurrence__gte': '2020-03-01'}, mesh='mun'):
+                                                        'date_occurrence__lte': '2020-03-31',
+                                                        'date_occurrence__gte': '2020-03-01'}, 
+                      mesh='mun', target='CONFIRMADO'):
     '''
     '''
     dict_results = {
@@ -44,7 +45,14 @@ def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3
         map_cells_pobtot[getattr(cell, 'gridid_' + mesh)] = cell.pobtot
 
     target_filter = mesh_occurrence_condition(mesh, target_filter)
-    target_by_cell = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
+
+    if target == 'VACUNADO':
+        target_by_cell = OccurrenceVaccines.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
+    else:
+        target_by_cell = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
+
+    print(target_by_cell)
+
     map_cell_target = {}
 
     for tc in target_by_cell:
@@ -155,10 +163,15 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
 
     if lim_inf_first != None and lim_sup_first != None:
         target_filter_first = get_target_filter(mesh, lim_inf_first, lim_sup_first, target)
-        target_first = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter_first).annotate(tcount=Count('id'))
+
+        if target == 'VACUNADO':
+            target_first = OccurrenceCOVID19.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter_first).annotate(tcount=Count('id'))
+        else:
+            target_first = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter_first).annotate(tcount=Count('id'))
+
         map_target_first = make_map(target_first, 'gridid_' + mesh, 'tcount')
 
-        epsilon = calculate_epsilon(dbs, target_filter_first, mesh)
+        epsilon = calculate_epsilon(dbs, target_filter_first, mesh, target)
         s0_first = epsilon['s0'][0]
         df_epsilon_first = pd.DataFrame(epsilon)
     else:
@@ -167,20 +180,29 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
 
     if lim_inf_validation != None and lim_sup_validation != None:
         target_filter_validation = get_target_filter(mesh, lim_inf_validation, lim_sup_validation, target)
-        target_validation = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter_validation).annotate(tcount=Count('id'))
+
+        if target == 'VACUNADO':
+            target_validation = OccurrenceCOVID19.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter_validation).annotate(tcount=Count('id'))
+        else:
+            target_validation = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter_validation).annotate(tcount=Count('id'))
+        
         map_target_validation = make_map(target_validation, 'gridid_' + mesh, 'tcount')
     else:
         map_target_validation = None
 
     map_cell_score = {}
     target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target)
-    epsilon = calculate_epsilon(dbs, target_filter, mesh)
+    epsilon = calculate_epsilon(dbs, target_filter, mesh, target)
     s0 = epsilon['s0'][0]
     df_epsilon = pd.DataFrame(epsilon)
     cells = get_mesh(mesh)
     percentiles = 20
 
-    target_training = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
+    if target == 'VACUNADO':
+        target_training = OccurrenceCOVID19.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
+    else:
+        target_training = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
+
     map_target_training = make_map(target_training, 'gridid_' + mesh, 'tcount')
 
     for cell in cells:
@@ -315,6 +337,8 @@ def get_target_filter(mesh, lim_inf, lim_sup, target):
         target_filter['variable_id__in'] = [5]
     elif target == 'PRUEBA':
         target_filter['variable_id__in'] = [1, 2, 3]
+    elif target == 'VACUNADO':
+        target_filter['variable_id'] = 1
 
     if target == 'FALLECIDO':
         if lim_inf != -99999:
