@@ -10,6 +10,7 @@ urlpatterns = [
     path('vaccines/', Vaccines.as_view(), name='vaccines'),
     path('vaccines/mesh/', Mesh.as_view(), name='mesh'),
     path('vaccines/target-groups/', TargetGroups.as_view(), name='target'),
+    path('vaccines/summary-vaccines/', SummaryVaccines.as_view(), name='summary'),
 
     #path('utils/mesh/', Mesh.as_view(), name='mesh'),
 

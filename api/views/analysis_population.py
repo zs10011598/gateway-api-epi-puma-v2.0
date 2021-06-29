@@ -155,9 +155,22 @@ class CellsTimeValidation(APIView):
 		else:
 			return Response({"message": "`lim_sup_validation` parameter not found"}, status=status.HTTP_400_BAD_REQUEST)
 
+		if 'attribute_filter' in request.data.keys():
+			attribute_filter = request.data['attribute_filter']
+		else:
+			attribute_filter = {}
+
+		if 'demographic_group' in request.data.keys():
+			demographic_group = request.data['demographic_group']
+		else:
+			demographic_group = None
+
+		#print(attribute_filter)
+
 		#print(map_target_validation)
 		response = calculate_score(dbs, mesh, target, lim_inf_training, lim_sup_training, 
 									lim_inf_first, lim_sup_first, 
-									lim_inf_validation, lim_sup_validation) 
+									lim_inf_validation, lim_sup_validation, demographic_group,
+									attribute_filter) 
 
 		return Response({'data': response}, status=status.HTTP_200_OK)

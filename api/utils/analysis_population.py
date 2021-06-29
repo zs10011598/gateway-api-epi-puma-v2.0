@@ -14,7 +14,7 @@ from sklearn.linear_model import LinearRegression
 def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3], 
                                                         'date_occurrence__lte': '2020-03-31',
                                                         'date_occurrence__gte': '2020-03-01'}, 
-                      mesh='mun', target='CONFIRMADO'):
+                      mesh='mun', target='CONFIRMADO', demographic_group=None):
     '''
     '''
     dict_results = {
@@ -35,14 +35,31 @@ def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3
                     's0':[],
                     'score':[]
                     }
+
+    demographic_group_dict = {}
+
+    if demographic_group != None:
+        demographic_group_dict = get_demographic(mesh, demographic_group)
+
+        N = 0
+        for gridid in demographic_group_dict.keys():
+            N += demographic_group_dict[gridid]
+
+        #print(demographic_group_dict)
+
+    else:
+        N = CellState.objects.aggregate(Sum('pobtot'))['pobtot__sum']
     
-    N = CellState.objects.aggregate(Sum('pobtot'))['pobtot__sum']
     cells = get_mesh(mesh)
 
     map_cells_pobtot = {}
 
     for cell in cells:
-        map_cells_pobtot[getattr(cell, 'gridid_' + mesh)] = cell.pobtot
+        gridid = getattr(cell, 'gridid_' + mesh)
+        if demographic_group != None:
+            map_cells_pobtot[gridid] = demographic_group_dict[gridid]
+        else:
+            map_cells_pobtot[gridid] = cell.pobtot
 
     target_filter = mesh_occurrence_condition(mesh, target_filter)
 
@@ -51,12 +68,15 @@ def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3
     else:
         target_by_cell = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
 
-    print(target_by_cell)
+    print(target_filter)
 
     map_cell_target = {}
 
     for tc in target_by_cell:
         map_cell_target[tc['gridid_' + mesh]] = tc['tcount']
+
+    print('MAP CELL TARGET')
+    print(target_by_cell)
 
     ## Nc
     Nc = 0
@@ -148,7 +168,8 @@ def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3
             dict_results['s0'].append(s0)
 
             ## score
-            score = np.log((Ncx/Nc + alpha)/(Nc_x/Nc_ + 2*alpha))
+            #score = np.log((Ncx/Nc + alpha)/(Nc_x/Nc_ + 2*alpha))
+            score = np.log(((Ncx + 0.005)/(Nc + 0.01))/((Nc_x + 0.01)/(Nc_+0.005)))
             dict_results['score'].append(score)
 
     return dict_results
@@ -156,13 +177,17 @@ def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3
 
 def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
                     lim_inf_training='2020-03-01', lim_sup_training='2020-03-31', 
-                    lim_inf_first=None, lim_sup_first=None, lim_inf_validation=None, lim_sup_validation=None):
+                    lim_inf_first=None, lim_sup_first=None, lim_inf_validation=None, 
+                    lim_sup_validation=None, demographic_group=None, attribute_filter=None):
     '''
     '''
 
+    demographic_group_dict = {}
+    if demographic_group != None:
+        demographic_group_dict = get_demographic(mesh, demographic_group)    
 
     if lim_inf_first != None and lim_sup_first != None:
-        target_filter_first = get_target_filter(mesh, lim_inf_first, lim_sup_first, target)
+        target_filter_first = get_target_filter(mesh, lim_inf_first, lim_sup_first, target, attribute_filter)
 
         if target == 'VACUNADO':
             target_first = OccurrenceCOVID19.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter_first).annotate(tcount=Count('id'))
@@ -171,7 +196,7 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
 
         map_target_first = make_map(target_first, 'gridid_' + mesh, 'tcount')
 
-        epsilon = calculate_epsilon(dbs, target_filter_first, mesh, target)
+        epsilon = calculate_epsilon(dbs, target_filter_first, mesh, target, demographic_group)
         s0_first = epsilon['s0'][0]
         df_epsilon_first = pd.DataFrame(epsilon)
     else:
@@ -179,7 +204,7 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
         s0_first = 0
 
     if lim_inf_validation != None and lim_sup_validation != None:
-        target_filter_validation = get_target_filter(mesh, lim_inf_validation, lim_sup_validation, target)
+        target_filter_validation = get_target_filter(mesh, lim_inf_validation, lim_sup_validation, target, attribute_filter)
 
         if target == 'VACUNADO':
             target_validation = OccurrenceCOVID19.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter_validation).annotate(tcount=Count('id'))
@@ -191,8 +216,8 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
         map_target_validation = None
 
     map_cell_score = {}
-    target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target)
-    epsilon = calculate_epsilon(dbs, target_filter, mesh, target)
+    target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target, attribute_filter)
+    epsilon = calculate_epsilon(dbs, target_filter, mesh, target, demographic_group)
     s0 = epsilon['s0'][0]
     df_epsilon = pd.DataFrame(epsilon)
     cells = get_mesh(mesh)
@@ -209,6 +234,9 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
         gridid = getattr(cell, 'gridid_'  + mesh)
         map_cell_score[gridid] = {'score_training': s0, 'gridid': gridid, 'pobtot': cell.pobtot}
         map_cell_score[gridid]['cell'] = get_serialized_cell(cell, mesh)
+
+        if demographic_group != None:
+            map_cell_score[gridid][demographic_group] = demographic_group_dict[gridid]
 
         if gridid in map_target_training.keys():
                 map_cell_score[gridid]['cases_training'] = map_target_training[gridid]
@@ -253,7 +281,15 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
                     map_cell_score[gridid]['score_first'] += current_score_first                    
 
     df_cells = pd.DataFrame(map_cell_score.values())
-    N = df_cells.pobtot.sum()
+
+    if demographic_group != None:
+        demographic_group_dict = get_demographic(mesh, demographic_group)
+        N = 0
+        for gridid in demographic_group_dict.keys():
+            N += demographic_group_dict[gridid]
+    else:
+        N = df_cells.pobtot.sum()
+
     percentil_length = N / percentiles
     
     if map_target_first != None:
@@ -269,12 +305,18 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
             lower_first = aux_first
             upper_first = aux_first
             while cummulated_length < (d+1)*percentil_length:
-                cummulated_length += df_cells.iloc[upper_first].pobtot
+                if demographic_group != None:
+                    cummulated_length += df_cells.iloc[upper_first][demographic_group]
+                else:    
+                    cummulated_length += df_cells.iloc[upper_first].pobtot
                 upper_first += 1
             aux_first = upper_first
 
             cases_percentil_first = df_cells.iloc[lower_first:upper_first].cases_first.sum()
-            pobtot_percentil_first = df_cells.iloc[lower_first:upper_first].pobtot.sum()
+            if demographic_group != None:
+                pobtot_percentil_first = df_cells.iloc[lower_first:upper_first][demographic_group].sum()
+            else:
+                pobtot_percentil_first = df_cells.iloc[lower_first:upper_first].pobtot.sum()
 
             p_first += [cases_percentil_first/pobtot_percentil_first for i in range(upper_first - lower_first)]
             percentil_first += [percentiles - d for i in range(upper_first - lower_first)]
@@ -295,12 +337,20 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
         lower_training = aux_training
         upper_training = aux_training
         while cummulated_length < (d+1)*percentil_length:
-            cummulated_length += df_cells.iloc[upper_training].pobtot
+            if demographic_group != None:
+                cummulated_length += df_cells.iloc[upper_training][demographic_group]
+            else:
+                cummulated_length += df_cells.iloc[upper_training].pobtot
+
             upper_training += 1
         aux_training = upper_training
 
         cases_percentil_training = df_cells.iloc[lower_training:upper_training].cases_training.sum()
-        pobtot_percentil_training = df_cells.iloc[lower_training:upper_training].pobtot.sum()
+
+        if demographic_group != None:
+            pobtot_percentil_training = df_cells.iloc[lower_training:upper_training][demographic_group].sum()
+        else:
+            pobtot_percentil_training = df_cells.iloc[lower_training:upper_training].pobtot.sum()
 
         p_training += [cases_percentil_training/pobtot_percentil_training for i in range(upper_training - lower_training)]
         percentil_training += [percentiles - d for i in range(upper_training - lower_training)]
@@ -310,33 +360,34 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
     df_cells['percentil_training'] = pd.Series(percentil_training)
 
     if map_target_first != None:
-        scores = np.array((df_cells['score_training'] - df_cells['score_first']).tolist())
-        probas = np.array((df_cells['p_training'] - df_cells['p_first']).tolist())
+        scores = np.array((df_cells['score_first']).tolist())
+        probas = np.array((df_cells['p_first']).tolist())
 
         reg = LinearRegression()
         reg.fit(scores.reshape(-1, 1), probas)
 
-        p_predicted_validation = reg.predict(scores.reshape(-1, 1))
+        p_predicted_validation = reg.predict(np.array(df_cells['score_training']).reshape(-1, 1))
         df_cells['p_predicted_validation'] = df_cells['p_training'] + pd.Series(p_predicted_validation)
 
-        df_cells['cases_predicted_validation'] = (df_cells['pobtot'] - df_cells['cases_training'])*df_cells['p_predicted_validation']
+        df_cells['cases_predicted_validation'] = ((df_cells[demographic_group] if demographic_group != None else df_cells['pobtot']) - df_cells['cases_training'])*df_cells['p_predicted_validation']
 
     return df_cells.to_dict(orient='records')
 
 
-def get_target_filter(mesh, lim_inf, lim_sup, target):
+def get_target_filter(mesh, lim_inf, lim_sup, target, attribute_filter):
     '''
     '''
-    target_filter = {}
+    attribute_map = query_map_builder(attribute_filter)
+    target_filter = attribute_map
     
     target_filter = mesh_occurrence_condition(mesh, target_filter)
 
     if target == 'CONFIRMADO' or target == 'FALLECIDO':
-        target_filter['variable_id__in'] = [2, 3]
+        target_filter['variable_id__in'] = [5, 2, 3, 7]
     elif target == 'NEGATIVO':
-        target_filter['variable_id__in'] = [5]
+        target_filter['variable_id__in'] = [1]
     elif target == 'PRUEBA':
-        target_filter['variable_id__in'] = [1, 2, 3]
+        target_filter['variable_id__in'] = [1, 5, 2, 3]
     elif target == 'VACUNADO':
         target_filter['variable_id'] = 1
 
