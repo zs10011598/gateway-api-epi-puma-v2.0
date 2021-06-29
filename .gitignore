@@ -132,4 +132,4 @@ dmypy.json
 env.sh
 tests/
 *swp
-test_request.py
+test_request*

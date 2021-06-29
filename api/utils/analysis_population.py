@@ -360,17 +360,26 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
     df_cells['percentil_training'] = pd.Series(percentil_training)
 
     if map_target_first != None:
-        scores = np.array((df_cells['score_first']).tolist())
-        probas = np.array((df_cells['p_first']).tolist())
+        
+        if False:
+            '''
+                Esta es la prediccion "aditiva"
+            '''
+            scores = np.array((df_cells['score_first']).tolist())
+            probas = np.array((df_cells['p_first']).tolist())
 
-        reg = LinearRegression()
-        reg.fit(scores.reshape(-1, 1), probas)
+            reg = LinearRegression()
+            reg.fit(scores.reshape(-1, 1), probas)
 
-        p_predicted_validation = reg.predict(np.array(df_cells['score_training']).reshape(-1, 1))
-        df_cells['p_predicted_validation'] = df_cells['p_training'] + pd.Series(p_predicted_validation)
+            p_predicted_validation = reg.predict(np.array(df_cells['score_training']).reshape(-1, 1))
+            df_cells['p_predicted_validation'] = df_cells['p_training'] + pd.Series(p_predicted_validation)
 
-        df_cells['cases_predicted_validation'] = ((df_cells[demographic_group] if demographic_group != None else df_cells['pobtot']) - df_cells['cases_training'])*df_cells['p_predicted_validation']
-
+            df_cells['cases_predicted_validation'] = ((df_cells[demographic_group] if demographic_group != None else df_cells['pobtot']) - df_cells['cases_training'])*df_cells['p_predicted_validation']
+        else:
+            '''
+                Esta es la prediccion "multiplicativa"
+            '''
+            df_cells['cases_predicted_validation'] = df_cells.apply(lambda row: 0 if row.cases_first == 0 else ((row.cases_training/row.cases_first)*row.p_training)*row[demographic_group], axis=1)
     return df_cells.to_dict(orient='records')
 
 
