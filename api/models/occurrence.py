@@ -26,6 +26,8 @@ class OccurrenceINEGI2020(models.Model):
     p_60ymas = models.FloatField(db_column='P_60YMAS')
     p_50a59 = models.FloatField(db_column='P_50A59')
     p_40a49 = models.FloatField(db_column='P_40A49')
+    p_30a39 = models.FloatField(db_column='P_30A39')
+    p_18a29 = models.FloatField(db_column='P_18A29')
 
     class Meta:
         managed = False
