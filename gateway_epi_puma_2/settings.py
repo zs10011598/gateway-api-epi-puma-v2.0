@@ -26,14 +26,18 @@ SECRET_KEY = '@z7xd@m43s2hk(kkz7eenlw9_sl1+7m)wa+55m)0g1--!ot=!*'
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_Origin_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
 
+CORS_Origin_WHITELIST = ['*']
+CORS_Origin_REGEX_WHITELIST = ['*']
 
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     'graphene_django',
     'api.apps.ApiConfig',
     'rest_framework',
@@ -46,6 +50,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
