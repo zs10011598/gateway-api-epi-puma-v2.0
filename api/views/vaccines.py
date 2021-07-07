@@ -57,7 +57,7 @@ class SummaryVaccines(APIView):
         else:
             demographic_group = None
 
-        summary_vaccines_map = {}
+        summary_vaccines_list = []
 
         demographic_group_dict = {}
         if demographic_group != None:
@@ -65,15 +65,32 @@ class SummaryVaccines(APIView):
 
         cells = get_mesh(mesh)
         target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, 'VACUNADO', attribute_filter)
-        target_training = OccurrenceVaccines.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
+        target_training = OccurrenceVaccines.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(count=Count('id'))
+
+        cummulated_filter = get_target_filter(mesh, '2021-01-01', lim_sup_training, 'VACUNADO', attribute_filter)
+        cummulated_training = OccurrenceVaccines.objects.using('vaccines').values('gridid_' + mesh).filter(**cummulated_filter).annotate(count=Count('id'))
+
+        target_training_map = {}
+        for item in target_training:
+            target_training_map[item['gridid_' + mesh]] = item['count']
+
+        cummulated_training_map = {}
+        for item in cummulated_training:
+            cummulated_training_map[item['gridid_' + mesh]] = item['count']
 
         current_cell = {}
 
         for gridid in demographic_group_dict:
-            if not gridid in  summary_vaccines_map.keys():
-                demographic_group_dict[gridid] = {}
+            count = target_training_map[gridid] if gridid in target_training_map.keys() else 0
+            cummulated_count = cummulated_training_map[gridid] if gridid in cummulated_training_map.keys() else 0
+            summary_vaccines_list.append({demographic_group: int(demographic_group_dict[gridid]), 
+                                          'count': count, 
+                                          'gridid': gridid,
+                                          'percentage_vaccinated': (count/demographic_group_dict[gridid])*100,
+                                          'cummulated_count': cummulated_count,
+                                          'percentage_cummulated': (cummulated_count/demographic_group_dict[gridid])*100})
 
-        return Response({'summary_vaccines': target_training}, status=status.HTTP_200_OK)
+        return Response({'summary_vaccines': summary_vaccines_list}, status=status.HTTP_200_OK)
 
 
 class Mesh(APIView):

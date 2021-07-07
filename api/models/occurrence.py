@@ -56,7 +56,7 @@ class OccurrenceVaccines(models.Model):
     gridid_mun = models.CharField(max_length=5)
     gridid_ageb = models.CharField(max_length=10)
     date_occurrence = models.DateField()
-    edad = models.IntegerField(db_column='EDAD')
+    edad = models.IntegerField(db_column='edad_a')
 
     class Meta:
         managed = False
