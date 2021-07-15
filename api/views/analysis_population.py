@@ -39,9 +39,19 @@ class Covariables(APIView):
 		else:
 			lim_sup_training = -99999
 
-		target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target)
+		if 'attribute_filter' in request.data.keys():
+			attribute_filter = request.data['attribute_filter']
+		else:
+			attribute_filter = {}
 
-		computations  = calculate_epsilon(dbs, target_filter, mesh, target)
+		if 'demographic_group' in request.data.keys():
+			demographic_group = request.data['demographic_group']
+		else:
+			demographic_group = None
+
+		target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target, attribute_filter)
+
+		computations  = calculate_epsilon(dbs, target_filter, mesh, target, demographic_group)
 
 		N = len(computations['N'])
 		response = []
