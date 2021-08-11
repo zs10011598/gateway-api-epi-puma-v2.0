@@ -65,10 +65,13 @@ class SummaryVaccines(APIView):
 
         cells = get_mesh(mesh)
         target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, 'VACUNADO', attribute_filter)
-        target_training = OccurrenceVaccines.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(count=Count('id'))
+        print(target_filter)
+        #target_training = OccurrenceVaccines.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(count=Count('id'))
+        target_training = OccurrenceVaccinesSummarized.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(count=Sum('occ'))
 
         cummulated_filter = get_target_filter(mesh, '2021-01-01', lim_sup_training, 'VACUNADO', attribute_filter)
-        cummulated_training = OccurrenceVaccines.objects.using('vaccines').values('gridid_' + mesh).filter(**cummulated_filter).annotate(count=Count('id'))
+        #cummulated_training = OccurrenceVaccines.objects.using('vaccines').values('gridid_' + mesh).filter(**cummulated_filter).annotate(count=Count('id'))
+        cummulated_training = OccurrenceVaccinesSummarized.objects.using('vaccines').values('gridid_' + mesh).filter(**cummulated_filter).annotate(count=Sum('occ'))
 
         target_training_map = {}
         for item in target_training:
@@ -82,6 +85,8 @@ class SummaryVaccines(APIView):
 
         for gridid in demographic_group_dict:
             count = target_training_map[gridid] if gridid in target_training_map.keys() else 0
+            if gridid == '01001':
+                print(count)
             cummulated_count = cummulated_training_map[gridid] if gridid in cummulated_training_map.keys() else 0
             summary_vaccines_list.append({demographic_group: int(demographic_group_dict[gridid]), 
                                           'count': count, 
