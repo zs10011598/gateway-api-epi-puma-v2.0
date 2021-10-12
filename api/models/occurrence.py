@@ -76,3 +76,29 @@ class OccurrenceVaccinesSummarized(models.Model):
     class Meta:
         managed = False
         db_table = 'occurrence_summary' 
+
+
+class OccurrenceIRAG(models.Model):
+
+    var = models.CharField(max_length=255)
+    bin = models.IntegerField()
+    variable_id = models.IntegerField(db_column='covariable_id')
+    gridid_state = models.CharField(max_length=2) 
+    gridid_mun = models.CharField(max_length=5)
+    gridid_ageb = models.CharField(max_length=10)
+    date_occurrence = models.DateField()
+
+    class Meta:
+        managed = False
+        db_table = 'occurrence' 
+
+
+class OccurrenceIRAGInterval(models.Model):
+
+    variable_id = models.IntegerField(db_column='covariable_id')
+    date_occurrence = models.DateField()
+    interval = models.CharField(max_length=255, db_column='range')
+
+    class Meta:
+        managed = False
+        db_table = 'interval' 

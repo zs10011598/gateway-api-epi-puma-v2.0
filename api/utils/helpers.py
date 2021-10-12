@@ -1,6 +1,7 @@
 from ..models.cell import *
 from ..serializers.cell import *
 from ..models.occurrence import *
+from collections import namedtuple 
 
 
 
@@ -83,3 +84,28 @@ def query_map_builder(l):
         query_map[item['attribute'] + query_operator] = item['value']
     #print(query_map)
     return query_map
+
+
+def get_irag_covariables_from_occurrences(occs):
+    '''
+    '''
+    attributes_list = ['id', 'var', 'bin', 'cells_state', 'interval', 'cells_mun', 'cells_ageb']
+    GenericCovariable = namedtuple('GenericCovariable', attributes_list) 
+    covars = {}
+    for occ in occs:
+
+        if not occ.variable_id in covars.keys(): 
+            interval = OccurrenceIRAGInterval.objects.using('irag').get(variable_id=occ.variable_id, 
+                                                                        date_occurrence=occ.date_occurrence).interval
+            aux_covariable = GenericCovariable(id=occ.variable_id, var=occ.var, bin=occ.bin, cells_state=[occ.gridid_state], 
+                                                interval=interval, cells_mun=[occ.gridid_mun], cells_ageb=[occ.gridid_ageb])
+            covars[occ.variable_id] = aux_covariable
+        elif not occ.gridid_mun in covars[occ.variable_id].cells_mun:
+            covars[occ.variable_id].cells_mun.append(occ.gridid_mun)
+            if not occ.gridid_state in covars[occ.variable_id].cells_state:
+                covars[occ.variable_id].cells_state.append(occ.gridid_state)
+            if not occ.gridid_ageb in covars[occ.variable_id].cells_ageb:
+                covars[occ.variable_id].cells_ageb.append(occ.gridid_ageb)
+    return covars.values()
+
+

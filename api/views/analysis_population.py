@@ -19,6 +19,11 @@ class Covariables(APIView):
 		else:
 			return Response({"message": "`covariables` parameter not found"}, status=status.HTTP_400_BAD_REQUEST)
 
+		if 'covariable_filter' in request.data.keys():
+			covariable_filter = request.data['covariable_filter']
+		else:
+			covariable_filter = {}
+
 		if 'mesh' in request.data.keys():
 			mesh = request.data['mesh']
 		else:
@@ -51,7 +56,7 @@ class Covariables(APIView):
 
 		target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target, attribute_filter)
 
-		computations  = calculate_epsilon(dbs, target_filter, mesh, target, demographic_group)
+		computations  = calculate_epsilon(dbs, covariable_filter, target_filter, mesh, target, demographic_group)
 
 		N = len(computations['N'])
 		response = []
@@ -125,6 +130,11 @@ class CellsTimeValidation(APIView):
 		else:
 			return Response({"message": "`covariables` parameter not found"}, status=status.HTTP_400_BAD_REQUEST)
 
+		if 'covariable_filter' in request.data.keys():
+			covariable_filter = request.data['covariable_filter']
+		else:
+			covariable_filter = {}		
+
 		if 'mesh' in request.data.keys():
 			mesh = request.data['mesh']
 		else:
@@ -178,7 +188,7 @@ class CellsTimeValidation(APIView):
 		#print(attribute_filter)
 
 		#print(map_target_validation)
-		response = calculate_score(dbs, mesh, target, lim_inf_training, lim_sup_training, 
+		response = calculate_score(dbs, covariable_filter, mesh, target, lim_inf_training, lim_sup_training, 
 									lim_inf_first, lim_sup_first, 
 									lim_inf_validation, lim_sup_validation, demographic_group,
 									attribute_filter) 

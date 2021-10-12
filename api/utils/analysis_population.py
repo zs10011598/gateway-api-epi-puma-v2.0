@@ -1,3 +1,4 @@
+import json
 from ..models.cell import *
 from django.db.models import Sum, Count
 from ..models.variable import *
@@ -11,7 +12,7 @@ from sklearn.linear_model import LinearRegression
 
 ### Por el momento los grupos de covariables se incluyen completos y los target son de la base de COVID19
 
-def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3], 
+def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'variable_id__in': [2, 3], 
                                                         'date_occurrence__lte': '2020-03-31',
                                                         'date_occurrence__gte': '2020-03-01'}, 
                       mesh='mun', target='CONFIRMADO', demographic_group=None):
@@ -61,6 +62,8 @@ def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3
         else:
             map_cells_pobtot[gridid] = cell.pobtot
 
+
+    print(mesh, target_filter)
     target_filter = mesh_occurrence_condition(mesh, target_filter)
 
     if target == 'VACUNADO':
@@ -75,8 +78,8 @@ def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3
     for tc in target_by_cell:
         map_cell_target[tc['gridid_' + mesh]] = tc['tcount']
 
-    print('MAP CELL TARGET')
-    print(target_by_cell)
+    #print('MAP CELL TARGET')
+    #print(target_by_cell)
 
     ## Nc
     Nc = 0
@@ -102,6 +105,27 @@ def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3
         
         if db == 'inegi2020':
             covars = VariableINEGI2020.objects.all().using(db)
+            #print(covars)
+
+        if db == 'irag':
+            lim_sup_training = target_filter['date_occurrence__lte'] if 'date_occurrence__lte' in target_filter.keys() else target_filter['fecha_def__lte']
+
+
+            filter_list = []
+            covar_ids = []
+            if db in covariable_filter.keys():
+                filter_list = covariable_filter[db]
+                covar_ids = VariableIRAG.objects.using('irag').filter(name__in=filter_list).values('id')
+
+            covar_ids = [int(cid['id']) for cid in covar_ids]
+
+            if len(covar_ids) > 0:
+                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence=lim_sup_training, variable_id__in=covar_ids)
+            else:
+                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence=lim_sup_training)
+
+            covars = get_irag_covariables_from_occurrences(occs)
+            DataGenericCovariable = namedtuple('DataGenericCovariable', ['var', 'bin', 'interval'])
 
         for covar in covars:
 
@@ -115,16 +139,20 @@ def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3
             if db == 'inegi2020':
                 dict_results['variable'].append(VariableINEGI2020Serializer(covar).data)
 
+            if db == 'irag':
+                irag_covar = DataGenericCovariable(var=covar.var, bin=covar.bin, interval=covar.interval)
+                dict_results['variable'].append(dict(irag_covar._asdict()))
+
             ## Nx && Ncx
             Nx = 0
             Ncx = 0
             cells_presence = getattr(covar, 'cells_' + mesh)
 
             for gridid in cells_presence:
-                Nx += map_cells_pobtot[gridid]
+                Nx += map_cells_pobtot[gridid] if gridid in map_cells_pobtot.keys() else 0
 
                 if gridid in map_cell_target.keys():
-                    Ncx += map_cell_target[gridid]
+                    Ncx += map_cell_target[gridid] if gridid in map_cell_target.keys() else 0
 
             dict_results['Nx'].append(Nx)
             dict_results['Ncx'].append(Ncx)
@@ -175,7 +203,7 @@ def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3
     return dict_results
 
 
-def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
+def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target='CONFIRMADO',
                     lim_inf_training='2020-03-01', lim_sup_training='2020-03-31', 
                     lim_inf_first=None, lim_sup_first=None, lim_inf_validation=None, 
                     lim_sup_validation=None, demographic_group=None, attribute_filter=None):
@@ -196,7 +224,7 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
 
         map_target_first = make_map(target_first, 'gridid_' + mesh, 'tcount')
 
-        epsilon = calculate_epsilon(dbs, target_filter_first, mesh, target, demographic_group)
+        epsilon = calculate_epsilon(dbs, covariable_filter, target_filter_first, mesh, target, demographic_group)
         s0_first = epsilon['s0'][0]
         df_epsilon_first = pd.DataFrame(epsilon)
     else:
@@ -217,7 +245,7 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
 
     map_cell_score = {}
     target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target, attribute_filter)
-    epsilon = calculate_epsilon(dbs, target_filter, mesh, target, demographic_group)
+    epsilon = calculate_epsilon(dbs, covariable_filter, target_filter, mesh, target, demographic_group)
     s0 = epsilon['s0'][0]
     df_epsilon = pd.DataFrame(epsilon)
     cells = get_mesh(mesh)
@@ -263,6 +291,24 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
         if db == 'inegi2020':
             covars = VariableINEGI2020.objects.all().using(db)
 
+        if db == 'irag':
+            lim_sup_training = target_filter['date_occurrence__lte'] if 'date_occurrence__lte' in target_filter.keys() else target_filter['fecha_def__lte']
+
+            filter_list = []
+            covar_ids = []
+            if db in covariable_filter.keys():
+                filter_list = covariable_filter[db]
+                covar_ids = VariableIRAG.objects.using('irag').filter(name__in=filter_list).values('id')
+
+            covar_ids = [int(cid['id']) for cid in covar_ids]
+
+            if len(covar_ids) > 0:
+                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence=lim_sup_training, variable_id__in=covar_ids)
+            else:
+                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence=lim_sup_training)
+
+            covars = get_irag_covariables_from_occurrences(occs)
+
         for covar in covars:
 
             cells_presence = getattr(covar, 'cells_' + mesh)
@@ -274,10 +320,11 @@ def calculate_score(dbs=['inegi2020'],  mesh='mun', target='CONFIRMADO',
                 current_score_first = 0       
 
             for gridid in cells_presence:
+                
+                if gridid in map_cell_score.keys():
+                    map_cell_score[gridid]['score_training'] += current_score
 
-                map_cell_score[gridid]['score_training'] += current_score
-
-                if map_target_first != None:
+                if map_target_first != None and gridid in map_target_first.keys():
                     map_cell_score[gridid]['score_first'] += current_score_first                    
 
     df_cells = pd.DataFrame(map_cell_score.values())

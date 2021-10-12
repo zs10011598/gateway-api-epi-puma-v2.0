@@ -124,6 +124,14 @@ DATABASES = {
         'NAME': os.environ['DBVACC'],
         'USER': os.environ['DBUSER'],
         'PASSWORD': os.environ['DBPASS']
+    },
+    'irag': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.environ['DBHOST'],
+        'PORT': os.environ['DBPORT'],
+        'NAME': os.environ['DBIRAG'],
+        'USER': os.environ['DBUSER'],
+        'PASSWORD': os.environ['DBPASS']
     }
 }
 
