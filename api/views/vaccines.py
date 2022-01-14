@@ -65,7 +65,7 @@ class SummaryVaccines(APIView):
 
         cells = get_mesh(mesh)
         target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, 'VACUNADO', attribute_filter)
-        print(target_filter)
+        #print(target_filter)
         #target_training = OccurrenceVaccines.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(count=Count('id'))
         target_training = OccurrenceVaccinesSummarized.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(count=Sum('occ'))
 

@@ -11,4 +11,11 @@ class VariableINEGI2020Serializer(serializers.Serializer):
     lim_inf = serializers.FloatField()
     lim_sup = serializers.FloatField()
     mesh = serializers.CharField(max_length=5)
-    
+
+
+class VariableSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(max_length=100)
+    description = serializers.CharField(max_length=100)
+    bin = serializers.IntegerField()
+    tag = serializers.CharField(max_length=100)

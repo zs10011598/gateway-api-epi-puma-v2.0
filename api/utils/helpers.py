@@ -2,6 +2,7 @@ from ..models.cell import *
 from ..serializers.cell import *
 from ..models.occurrence import *
 from collections import namedtuple 
+from django.db.models import Sum
 
 
 
@@ -92,9 +93,13 @@ def get_irag_covariables_from_occurrences(occs):
     attributes_list = ['id', 'var', 'bin', 'cells_state', 'interval', 'cells_mun', 'cells_ageb']
     GenericCovariable = namedtuple('GenericCovariable', attributes_list) 
     covars = {}
+
+    print('There are ' + str(len(occs)) + ' occurrences of IRAG covariables')
+
     for occ in occs:
 
         if not occ.variable_id in covars.keys(): 
+            #print(occ)
             interval = OccurrenceIRAGInterval.objects.using('irag').get(variable_id=occ.variable_id, 
                                                                         date_occurrence=occ.date_occurrence).interval
             aux_covariable = GenericCovariable(id=occ.variable_id, var=occ.var, bin=occ.bin, cells_state=[occ.gridid_state], 
@@ -106,6 +111,58 @@ def get_irag_covariables_from_occurrences(occs):
                 covars[occ.variable_id].cells_state.append(occ.gridid_state)
             if not occ.gridid_ageb in covars[occ.variable_id].cells_ageb:
                 covars[occ.variable_id].cells_ageb.append(occ.gridid_ageb)
+    #print(covars.values())
     return covars.values()
 
 
+def get_discretized_covars(occs, covars, mesh):
+    p = 10
+
+    covars_names = [cov['name'] for cov in covars.values('name').distinct()]
+    #print('Covars names: ' + str(covars_names))
+    list_occurrences = {}
+    covars_tags = {}
+
+    for name in covars_names:
+        print('Discretizing: ' + name)
+        occs_temp = occs.filter(var=name).values('gridid_' + mesh).annotate(value=Sum('value'))
+        list_occurrences[name] = []
+        covars_tags[name] = []
+        #occs_temp = occs_temp.filter(var=name)
+        N_occs = occs_temp.count()
+
+        if N_occs == 0:
+            print(name, ' no occurrences ')
+            list_occurrences.pop(name, None)
+            covars_tags.pop(name, None)
+            continue
+
+        #print('N_occs', N_occs)
+        occs_temp = occs_temp.order_by('value')
+        #print(occs_temp)
+        limits = get_limits(N_occs, p)
+        #print('limits ', limits)
+        current_gridid_list = []
+        currect_tags_list = []
+        for i in range(p):
+            current_gridid_list.append([occ['gridid_' + mesh] for occ in occs_temp[limits[i]: limits[i+1]]])
+            currect_tags_list.append(str("%.4f" % round(occs_temp[limits[i]]['value'], 4)) + ':' + str("%.4f" % round(occs_temp[limits[i+1]]['value'], 4)))
+        list_occurrences[name] = current_gridid_list
+        covars_tags[name] = currect_tags_list
+
+    #print(covars_tags)
+
+    for covar in covars:
+        if covar.name in list_occurrences.keys():
+            setattr(covar, 'cells_' + mesh, list_occurrences[covar.name][covar.bin-1])
+            setattr(covar, 'tag', covars_tags[covar.name][covar.bin-1])
+        else:
+            setattr(covar, 'cells_' + mesh, [])
+            setattr(covar, 'tag', None)
+
+    return covars
+
+
+def get_limits(N, p):
+    return [int(i*(N/p)) - int(i/p) for i in range(p+1)]
+    
