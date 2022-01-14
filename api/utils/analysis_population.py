@@ -71,8 +71,6 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
     else:
         target_by_cell = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
 
-    print(target_filter)
-
     map_cell_target = {}
 
     for tc in target_by_cell:
@@ -108,24 +106,30 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
             #print(covars)
 
         if db == 'irag':
-            lim_sup_training = target_filter['date_occurrence__lte'] if 'date_occurrence__lte' in target_filter.keys() else target_filter['fecha_def__lte']
+            filter_names = []
 
+            lim_sup_training = target_filter['date_occurrence__lte']
+            lim_inf_training = target_filter['date_occurrence__gte']
 
-            filter_list = []
-            covar_ids = []
+            ## Filtering covars by name
             if db in covariable_filter.keys():
-                filter_list = covariable_filter[db]
-                covar_ids = VariableIRAG.objects.using('irag').filter(name__in=filter_list).values('id')
-
-            covar_ids = [int(cid['id']) for cid in covar_ids]
-
-            if len(covar_ids) > 0:
-                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence=lim_sup_training, variable_id__in=covar_ids)
+                filter_names = covariable_filter[db]
+                covars = VariableIRAG.objects.using('irag').filter(name__in=filter_names)
             else:
-                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence=lim_sup_training)
+                covars = VariableIRAG.objects.all().using('irag')
 
-            covars = get_irag_covariables_from_occurrences(occs)
-            DataGenericCovariable = namedtuple('DataGenericCovariable', ['var', 'bin', 'interval'])
+            print('No. covars ' + str(covars.count()))
+
+            ## Filtering occs by date and name
+            if db in covariable_filter.keys():
+                filter_names = covariable_filter[db]
+                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence__lte=lim_sup_training, 
+                                                                    date_occurrence__gte=lim_inf_training, 
+                                                                    var__in=filter_names)
+            else:
+                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence__lte=lim_sup_training, 
+                                                                    date_occurrence__gte=lim_inf_training)
+            covars = get_discretized_covars(occs, covars, mesh)
 
         for covar in covars:
 
@@ -140,13 +144,15 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
                 dict_results['variable'].append(VariableINEGI2020Serializer(covar).data)
 
             if db == 'irag':
-                irag_covar = DataGenericCovariable(var=covar.var, bin=covar.bin, interval=covar.interval)
-                dict_results['variable'].append(dict(irag_covar._asdict()))
+                print(covar)
+                dict_results['variable'].append(VariableSerializer(covar).data)
+                #print(VariableSerializer(covar).data)
 
             ## Nx && Ncx
             Nx = 0
             Ncx = 0
             cells_presence = getattr(covar, 'cells_' + mesh)
+            print('COVAR => ', covar.name, '; bin => ', covar.bin, '; no. cells: ', len(cells_presence))
 
             for gridid in cells_presence:
                 Nx += map_cells_pobtot[gridid] if gridid in map_cells_pobtot.keys() else 0
@@ -168,6 +174,9 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
             dict_results['PC'].append(PC)
             dict_results['Nc'].append(Nc)
             dict_results['N'].append(N)
+
+            #print('Nx => ', Nx)
+            #print('PC => ', PC)
 
             ## epsilon
             if Nx == 0:
@@ -292,30 +301,39 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
             covars = VariableINEGI2020.objects.all().using(db)
 
         if db == 'irag':
-            lim_sup_training = target_filter['date_occurrence__lte'] if 'date_occurrence__lte' in target_filter.keys() else target_filter['fecha_def__lte']
+            filter_names = []
 
-            filter_list = []
-            covar_ids = []
+            lim_sup_training = target_filter['date_occurrence__lte']
+            lim_inf_training = target_filter['date_occurrence__gte']
+
+            ## Filtering covars by name
             if db in covariable_filter.keys():
-                filter_list = covariable_filter[db]
-                covar_ids = VariableIRAG.objects.using('irag').filter(name__in=filter_list).values('id')
-
-            covar_ids = [int(cid['id']) for cid in covar_ids]
-
-            if len(covar_ids) > 0:
-                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence=lim_sup_training, variable_id__in=covar_ids)
+                filter_names = covariable_filter[db]
+                covars = VariableIRAG.objects.using('irag').filter(name__in=filter_names)
             else:
-                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence=lim_sup_training)
+                covars = VariableIRAG.objects.all().using('irag')
 
-            covars = get_irag_covariables_from_occurrences(occs)
+            print('No. covars ' + str(covars.count()))
+
+            ## Filtering occs by date and name
+            if db in covariable_filter.keys():
+                filter_names = covariable_filter[db]
+                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence__lte=lim_sup_training, 
+                                                                    date_occurrence__gte=lim_inf_training, 
+                                                                    var__in=filter_names)
+            else:
+                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence__lte=lim_sup_training, 
+                                                                    date_occurrence__gte=lim_inf_training)
+            covars = get_discretized_covars(occs, covars, mesh)
 
         for covar in covars:
 
             cells_presence = getattr(covar, 'cells_' + mesh)
             current_score = df_epsilon[(df_epsilon.node == db) & (df_epsilon.id == covar.id)].iloc[0].score
             
-            if map_target_first != None:
-                current_score_first = df_epsilon_first[(df_epsilon_first.node == db) & (df_epsilon_first.id == covar.id)].iloc[0].score
+            df_aux = df_epsilon_first[(df_epsilon_first.node == db) & (df_epsilon_first.id == covar.id)]
+            if map_target_first != None and df_aux.shape[0] > 0:
+                current_score_first = df_aux.iloc[0].score
             else:
                 current_score_first = 0       
 
