@@ -43,6 +43,7 @@ class OccurrenceCOVID19(models.Model):
     date_occurrence = models.DateField()
     fecha_def = models.CharField(max_length=100)
     edad = models.IntegerField()
+    sexo = models.CharField(max_length=50)
 
     class Meta:
         managed = False

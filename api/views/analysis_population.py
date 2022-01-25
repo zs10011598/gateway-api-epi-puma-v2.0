@@ -54,9 +54,16 @@ class Covariables(APIView):
 		else:
 			demographic_group = None
 
+		if 'covariable_modifier' in request.data.keys():
+			covariable_modifier = request.data['covariable_modifier']
+		else:
+			covariable_modifier = None
+
 		target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target, attribute_filter)
 
-		computations  = calculate_epsilon(dbs, covariable_filter, target_filter, mesh, target, demographic_group)
+		#print(target_filter)
+
+		computations  = calculate_epsilon(dbs, covariable_filter, target_filter, mesh, target, demographic_group, covariable_modifier)
 
 		N = len(computations['N'])
 		response = []
@@ -185,12 +192,17 @@ class CellsTimeValidation(APIView):
 		else:
 			demographic_group = None
 
+		if 'covariable_modifier' in request.data.keys():
+			covariable_modifier = request.data['covariable_modifier']
+		else:
+			covariable_modifier = None
+
 		#print(attribute_filter)
 
 		#print(map_target_validation)
 		response = calculate_score(dbs, covariable_filter, mesh, target, lim_inf_training, lim_sup_training, 
 									lim_inf_first, lim_sup_first, 
 									lim_inf_validation, lim_sup_validation, demographic_group,
-									attribute_filter) 
+									attribute_filter, covariable_modifier) 
 
 		return Response({'data': response}, status=status.HTTP_200_OK)

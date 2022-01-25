@@ -1,6 +1,7 @@
 from ..models.cell import *
 from ..serializers.cell import *
 from ..models.occurrence import *
+from ..models.variable import *
 from collections import namedtuple 
 from django.db.models import Sum
 
@@ -15,7 +16,7 @@ def mesh_occurrence_condition(mesh, filter_cond):
         filter_cond['gridid_ageb'] = -99999
     else:
         filter_cond['gridid_ageb__ne'] = -99999
-
+    
     return filter_cond
 
 
@@ -115,7 +116,7 @@ def get_irag_covariables_from_occurrences(occs):
     return covars.values()
 
 
-def get_discretized_covars(occs, covars, mesh):
+def get_discretized_covars(occs, covars, mesh, period=None):
     p = 10
 
     covars_names = [cov['name'] for cov in covars.values('name').distinct()]
@@ -153,6 +154,7 @@ def get_discretized_covars(occs, covars, mesh):
     #print(covars_tags)
 
     for covar in covars:
+
         if covar.name in list_occurrences.keys():
             setattr(covar, 'cells_' + mesh, list_occurrences[covar.name][covar.bin-1])
             setattr(covar, 'tag', covars_tags[covar.name][covar.bin-1])
@@ -160,9 +162,125 @@ def get_discretized_covars(occs, covars, mesh):
             setattr(covar, 'cells_' + mesh, [])
             setattr(covar, 'tag', None)
 
-    return covars
+        covar.name = covar.name + ('-' + str(period) if period != None else '')
+
+    return [cov for cov in covars]
 
 
 def get_limits(N, p):
     return [int(i*(N/p)) - int(i/p) for i in range(p+1)]
+
+
+def get_modified_variables(occs, mesh, covar, modifier, p, map_cells_pobtot, backward_period):
+    '''
+    '''
+    covars = []
+    N = occs.count()
+
+    has_cases = False
+    new_cells = []
+    for cell in map_cells_pobtot.keys():
+        for occ in occs:
+            if occ['gridid_' + mesh] == cell:
+                has_cases = True
+                break
+
+        if not has_cases:
+            new_cells.append({'gridid_' + mesh: cell, 'tcount': 0})
+        else:
+            has_cases = False
+
+    occs = [occ for occ in occs] + new_cells
+
+    N += len(new_cells)
+    limits = get_limits(N, p)
     
+    if modifier == 'cases':
+        pass
+    elif modifier == 'incidence':
+        for occ in occs:
+            occ['tcount'] = occ['tcount']/map_cells_pobtot[occ['gridid_' + mesh]]
+
+    for i in range(10):
+        current_covar = VariableHistorical(id=int(str(backward_period)+str(10-i)), name=covar + '-' + modifier + '-' + str(backward_period), description='Periodo ' + str(backward_period), bin=10-i)
+        setattr(current_covar, 'tag',  str(occs[limits[i]]['tcount']) + ':' + str(occs[limits[i+1]]['tcount']))
+        cells_mun = []
+        for occ in occs[limits[i]: limits[i+1]]:            
+            cells_mun.append(occ['gridid_' + mesh])
+        setattr(current_covar, 'cells_' + mesh, cells_mun)
+        covars.append(current_covar)
+    return covars
+
+
+def get_historical_modified_variables(mesh, covars):
+    '''
+    '''
+    left_period = covars[20:]
+    middle_period = covars[10:20]
+    right_period = covars[:10]
+
+    historical_covars = []
+
+    for lp in left_period:
+        for mp in middle_period:
+
+            current_covar = VariableHistorical(id=int('3' + str(lp.bin) + '2' + str(mp.bin)), name=lp.name + '_' + mp.name, description='Periodo 3  Bin ' + str(lp.bin) + ' Periodo 2  Bin ' + str(mp.bin))
+
+            cells_lp = getattr(lp, 'cells_' + mesh)
+            cells_mp = getattr(mp, 'cells_' + mesh)
+
+            cells_final = [clp for clp in cells_lp if clp in cells_mp]
+
+            setattr(current_covar, 'cells_' + mesh, cells_final)
+
+            if len(cells_final) > 0:
+                historical_covars.append(current_covar)
+
+    for lp in left_period:
+        for rp in right_period:
+
+            current_covar = VariableHistorical(id=int('3' + str(lp.bin) + '1' + str(rp.bin)), name=lp.name + '_' + rp.name, description='Periodo 3  Bin ' + str(lp.bin) + ' Periodo 1  Bin ' + str(rp.bin))
+
+            cells_lp = getattr(lp, 'cells_' + mesh)
+            cells_rp = getattr(rp, 'cells_' + mesh)
+
+            cells_final = [clp for clp in cells_lp if lp in cells_rp]
+
+            setattr(current_covar, 'cells_' + mesh, cells_final)
+
+            if len(cells_final) > 0:
+                historical_covars.append(current_covar)
+
+    for mp in middle_period:
+        for rp in right_period:
+
+            current_covar = VariableHistorical(id=int('2' + str(mp.bin) + '1' + str(rp.bin)), name=mp.name + '_' + rp.name, description='Periodo 2  Bin ' + str(mp.bin) + ' Periodo 1  Bin ' + str(rp.bin))
+
+            cells_mp = getattr(mp, 'cells_' + mesh)
+            cells_rp = getattr(rp, 'cells_' + mesh)
+
+            cells_final = [clp for clp in cells_mp if clp in cells_rp]
+
+            setattr(current_covar, 'cells_' + mesh, cells_final)
+
+            if len(cells_final) > 0:
+                historical_covars.append(current_covar)
+
+    for lp in left_period:
+        for mp in middle_period:
+            for rp in right_period:
+
+                current_covar = VariableHistorical(id=int('3' + str(lp.bin) + '2' + str(mp.bin) + '1' + str(rp.bin)), name=lp.name + '_' + mp.name + '_' + rp.name, description='Periodo 3 Bin ' + str(lp.bin) + ' Periodo 2  Bin ' + str(mp.bin) + ' Periodo 1  Bin ' + str(rp.bin))
+                
+                cells_lp = getattr(lp, 'cells_' + mesh)
+                cells_mp = getattr(mp, 'cells_' + mesh)
+                cells_rp = getattr(rp, 'cells_' + mesh)
+
+                cells_final = [clp for clp in cells_lp if clp in cells_mp and clp in cells_rp]
+
+                setattr(current_covar, 'cells_' + mesh, cells_final)
+
+                if len(cells_final) > 0:
+                    historical_covars.append(current_covar)
+
+    return historical_covars

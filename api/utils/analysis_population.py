@@ -9,13 +9,14 @@ import numpy as np
 import pandas as pd
 from ..serializers.cell import *
 from sklearn.linear_model import LinearRegression
+import datetime as dt
 
 ### Por el momento los grupos de covariables se incluyen completos y los target son de la base de COVID19
 
 def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'variable_id__in': [2, 3], 
                                                         'date_occurrence__lte': '2020-03-31',
                                                         'date_occurrence__gte': '2020-03-01'}, 
-                      mesh='mun', target='CONFIRMADO', demographic_group=None):
+                      mesh='mun', target='CONFIRMADO', demographic_group=None, covariable_modifier=None):
     '''
     '''
     dict_results = {
@@ -63,8 +64,8 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
             map_cells_pobtot[gridid] = cell.pobtot
 
 
-    print(mesh, target_filter)
     target_filter = mesh_occurrence_condition(mesh, target_filter)
+    print(mesh, target_filter)
 
     if target == 'VACUNADO':
         target_by_cell = OccurrenceVaccines.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
@@ -75,9 +76,6 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
 
     for tc in target_by_cell:
         map_cell_target[tc['gridid_' + mesh]] = tc['tcount']
-
-    #print('MAP CELL TARGET')
-    #print(target_by_cell)
 
     ## Nc
     Nc = 0
@@ -102,34 +100,96 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
     for db in dbs:
         
         if db == 'inegi2020':
+            """
+                First type of analysis, static covariables
+            """
             covars = VariableINEGI2020.objects.all().using(db)
             #print(covars)
 
         if db == 'irag':
+            """
+                Second type of analysis, dynamical covariables
+            """
+            covars = []
             filter_names = []
 
-            lim_sup_training = target_filter['date_occurrence__lte']
-            lim_inf_training = target_filter['date_occurrence__gte']
+            lim_sup_training = target_filter['date_occurrence__lte'] if 'date_occurrence__lte' in target_filter.keys() else target_filter['fecha_def__lte']
+            lim_inf_training = target_filter['date_occurrence__gte'] if 'date_occurrence__gte' in target_filter.keys() else target_filter['fecha_def__gte']
 
-            ## Filtering covars by name
-            if db in covariable_filter.keys():
-                filter_names = covariable_filter[db]
-                covars = VariableIRAG.objects.using('irag').filter(name__in=filter_names)
+
+            for backward_period in range(1, 4):
+                
+                ## Filtering covars by name
+                if db in covariable_filter.keys():
+                    filter_names = covariable_filter[db]
+                    covars_to_dicretize = VariableIRAG.objects.using('irag').filter(name__in=filter_names)
+                else:
+                    covars_to_dicretize = VariableIRAG.objects.all().using('irag')
+
+                print('No. covars ' + str(covars_to_dicretize.count()))
+
+                delta_months = dt.timedelta(days = -backward_period*30)
+
+                lim_sup_training_bp = dt.datetime.strptime(lim_sup_training, '%Y-%m-%d') + delta_months
+                lim_inf_training_bp = dt.datetime.strptime(lim_inf_training, '%Y-%m-%d') + delta_months
+
+                lim_sup_training_bp = lim_sup_training_bp.strftime("%Y-%m-%d")
+                lim_inf_training_bp = lim_inf_training_bp.strftime("%Y-%m-%d")
+                
+                print('HISTORICAL DYNAMICAL VARIABLES PERIOD ' + str(backward_period) + ' DE ' + lim_inf_training_bp + ' A ' + lim_sup_training_bp)
+
+                ## Filtering occs by date and name
+                if db in covariable_filter.keys():
+                    filter_names = covariable_filter[db]
+                    occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence__lte=lim_sup_training_bp, 
+                                                                        date_occurrence__gte=lim_inf_training_bp, 
+                                                                        var__in=filter_names)
+                else:
+                    occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence__lte=lim_sup_training_bp, 
+                                                                        date_occurrence__gte=lim_inf_training_bp)
+                covars += get_discretized_covars(occs, covars_to_dicretize, mesh, backward_period)
+
+
+        if db == 'covid19':
+            """
+                Third type of analysis, target covariables as dynamical covariables
+            """
+            lim_sup_training = target_filter['date_occurrence__lte'] if 'date_occurrence__lte' in target_filter.keys() else target_filter['fecha_def__lte']
+            lim_inf_training = target_filter['date_occurrence__gte'] if 'date_occurrence__gte' in target_filter.keys() else target_filter['fecha_def__gte']
+            covars = []
+
+            if covariable_filter == None or not db in covariable_filter.keys():
+                pass                
             else:
-                covars = VariableIRAG.objects.all().using('irag')
+                if db in covariable_filter.keys():
 
-            print('No. covars ' + str(covars.count()))
+                    for covar in covariable_filter[db]:
 
-            ## Filtering occs by date and name
-            if db in covariable_filter.keys():
-                filter_names = covariable_filter[db]
-                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence__lte=lim_sup_training, 
-                                                                    date_occurrence__gte=lim_inf_training, 
-                                                                    var__in=filter_names)
-            else:
-                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence__lte=lim_sup_training, 
-                                                                    date_occurrence__gte=lim_inf_training)
-            covars = get_discretized_covars(occs, covars, mesh)
+                        for backward_period in range(1, 4):
+                            
+                            delta_months = dt.timedelta(days = -backward_period*30)
+                            
+                            lim_sup_training_bp = dt.datetime.strptime(lim_sup_training, '%Y-%m-%d') + delta_months
+                            lim_inf_training_bp = dt.datetime.strptime(lim_inf_training, '%Y-%m-%d') + delta_months
+
+                            lim_sup_training_bp = lim_sup_training_bp.strftime("%Y-%m-%d")
+                            lim_inf_training_bp = lim_inf_training_bp.strftime("%Y-%m-%d")
+
+                            covar_filter_bp = get_covar_filter(mesh, lim_inf_training_bp, lim_sup_training_bp, covar)
+
+                            print('HISTORICAL COVAR', covar, ': ',  covar_filter_bp)
+
+                            occs = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**covar_filter_bp).annotate(tcount=Count('id')).order_by('-tcount')
+
+                            modifier = covariable_modifier[db][covar]
+                            generated_covars = get_modified_variables(occs, mesh, covar, modifier, 10, map_cells_pobtot, backward_period)
+    
+                            covars += generated_covars
+
+                        covars += get_historical_modified_variables(mesh, covars)
+
+                else:
+                    covars = []
 
         for covar in covars:
 
@@ -144,15 +204,19 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
                 dict_results['variable'].append(VariableINEGI2020Serializer(covar).data)
 
             if db == 'irag':
-                print(covar)
+                #print(covar)
                 dict_results['variable'].append(VariableSerializer(covar).data)
                 #print(VariableSerializer(covar).data)
+
+            if db == 'covid19':
+                print(covar)
+                dict_results['variable'].append(VariableSerializer(covar).data)
 
             ## Nx && Ncx
             Nx = 0
             Ncx = 0
             cells_presence = getattr(covar, 'cells_' + mesh)
-            print('COVAR => ', covar.name, '; bin => ', covar.bin, '; no. cells: ', len(cells_presence))
+            #print('COVAR => ', covar.name, '; bin => ', covar.bin, '; no. cells: ', len(cells_presence))
 
             for gridid in cells_presence:
                 Nx += map_cells_pobtot[gridid] if gridid in map_cells_pobtot.keys() else 0
@@ -215,13 +279,23 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
 def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target='CONFIRMADO',
                     lim_inf_training='2020-03-01', lim_sup_training='2020-03-31', 
                     lim_inf_first=None, lim_sup_first=None, lim_inf_validation=None, 
-                    lim_sup_validation=None, demographic_group=None, attribute_filter=None):
+                    lim_sup_validation=None, demographic_group=None, attribute_filter=None,
+                    covariable_modifier=None):
     '''
     '''
-
+    
     demographic_group_dict = {}
     if demographic_group != None:
-        demographic_group_dict = get_demographic(mesh, demographic_group)    
+        demographic_group_dict = get_demographic(mesh, demographic_group)
+
+    cells = get_mesh(mesh)
+    map_cells_pobtot = {}
+    for cell in cells:
+        gridid = getattr(cell, 'gridid_' + mesh)
+        if demographic_group != None:
+            map_cells_pobtot[gridid] = demographic_group_dict[gridid]
+        else:
+            map_cells_pobtot[gridid] = cell.pobtot
 
     if lim_inf_first != None and lim_sup_first != None:
         target_filter_first = get_target_filter(mesh, lim_inf_first, lim_sup_first, target, attribute_filter)
@@ -233,7 +307,7 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
 
         map_target_first = make_map(target_first, 'gridid_' + mesh, 'tcount')
 
-        epsilon = calculate_epsilon(dbs, covariable_filter, target_filter_first, mesh, target, demographic_group)
+        epsilon = calculate_epsilon(dbs, covariable_filter, target_filter_first, mesh, target, demographic_group, covariable_modifier)
         s0_first = epsilon['s0'][0]
         df_epsilon_first = pd.DataFrame(epsilon)
     else:
@@ -254,7 +328,7 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
 
     map_cell_score = {}
     target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target, attribute_filter)
-    epsilon = calculate_epsilon(dbs, covariable_filter, target_filter, mesh, target, demographic_group)
+    epsilon = calculate_epsilon(dbs, covariable_filter, target_filter, mesh, target, demographic_group, covariable_modifier)
     s0 = epsilon['s0'][0]
     df_epsilon = pd.DataFrame(epsilon)
     cells = get_mesh(mesh)
@@ -302,29 +376,82 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
 
         if db == 'irag':
             filter_names = []
+            covars = []
 
-            lim_sup_training = target_filter['date_occurrence__lte']
-            lim_inf_training = target_filter['date_occurrence__gte']
+            lim_sup_training = target_filter['date_occurrence__lte'] if 'date_occurrence__lte' in target_filter.keys() else target_filter['fecha_def__lte']
+            lim_inf_training = target_filter['date_occurrence__gte'] if 'date_occurrence__gte' in target_filter.keys() else target_filter['fecha_def__gte']
 
-            ## Filtering covars by name
-            if db in covariable_filter.keys():
-                filter_names = covariable_filter[db]
-                covars = VariableIRAG.objects.using('irag').filter(name__in=filter_names)
+            for backward_period in range(1, 4):
+
+                ## Filtering covars by name
+                if db in covariable_filter.keys():
+                    filter_names = covariable_filter[db]
+                    covars_to_dicretize = VariableIRAG.objects.using('irag').filter(name__in=filter_names)
+                else:
+                    covars_to_dicretize = VariableIRAG.objects.all().using('irag')
+
+                print('No. covars ' + str(len(covars)))
+
+                delta_months = dt.timedelta(days = -backward_period*30)
+
+                lim_sup_training_bp = dt.datetime.strptime(lim_sup_training, '%Y-%m-%d') + delta_months
+                lim_inf_training_bp = dt.datetime.strptime(lim_inf_training, '%Y-%m-%d') + delta_months
+
+                lim_sup_training_bp = lim_sup_training_bp.strftime("%Y-%m-%d")
+                lim_inf_training_bp = lim_inf_training_bp.strftime("%Y-%m-%d")
+                
+                print('HISTORICAL DYNAMICAL VARIABLES PERIOD ' + str(backward_period) + ' DE ' + lim_inf_training_bp + ' A ' + lim_sup_training_bp)
+
+                ## Filtering occs by date and name
+                if db in covariable_filter.keys():
+                    filter_names = covariable_filter[db]
+                    occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence__lte=lim_sup_training_bp, 
+                                                                        date_occurrence__gte=lim_inf_training_bp, 
+                                                                        var__in=filter_names)
+                else:
+                    occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence__lte=lim_sup_training_bp, 
+                                                                        date_occurrence__gte=lim_inf_training_bp)
+                covars += get_discretized_covars(occs, covars_to_dicretize, mesh, backward_period)
+
+        if db == 'covid19':
+
+            lim_sup_training = target_filter['date_occurrence__lte'] if 'date_occurrence__lte' in target_filter.keys() else target_filter['fecha_def__lte']
+            lim_inf_training = target_filter['date_occurrence__gte'] if 'date_occurrence__gte' in target_filter.keys() else target_filter['fecha_def__gte']
+            
+            covars = []
+
+            if covariable_filter == None or not db in covariable_filter.keys():
+                pass                
             else:
-                covars = VariableIRAG.objects.all().using('irag')
+                if db in covariable_filter.keys():
 
-            print('No. covars ' + str(covars.count()))
+                    for covar in covariable_filter[db]:
 
-            ## Filtering occs by date and name
-            if db in covariable_filter.keys():
-                filter_names = covariable_filter[db]
-                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence__lte=lim_sup_training, 
-                                                                    date_occurrence__gte=lim_inf_training, 
-                                                                    var__in=filter_names)
-            else:
-                occs = OccurrenceIRAG.objects.using('irag').filter(date_occurrence__lte=lim_sup_training, 
-                                                                    date_occurrence__gte=lim_inf_training)
-            covars = get_discretized_covars(occs, covars, mesh)
+                        for backward_period in range(1, 4):
+                            
+                            delta_months = dt.timedelta(days = -backward_period*30)
+                            
+                            lim_sup_training_bp = dt.datetime.strptime(lim_sup_training, '%Y-%m-%d') + delta_months
+                            lim_inf_training_bp = dt.datetime.strptime(lim_inf_training, '%Y-%m-%d') + delta_months
+
+                            lim_sup_training_bp = lim_sup_training_bp.strftime("%Y-%m-%d")
+                            lim_inf_training_bp = lim_inf_training_bp.strftime("%Y-%m-%d")
+
+                            covar_filter_bp = get_covar_filter(mesh, lim_inf_training_bp, lim_sup_training_bp, covar)
+
+                            print('HISTORICAL COVAR', covar, ': ',  covar_filter_bp)
+
+                            occs = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**covar_filter_bp).annotate(tcount=Count('id')).order_by('-tcount')
+
+                            modifier = covariable_modifier[db][covar]
+                            generated_covars = get_modified_variables(occs, mesh, covar, modifier, 10, map_cells_pobtot, backward_period)
+    
+                            covars += generated_covars
+
+                        covars += get_historical_modified_variables(mesh, covars)
+
+                else:
+                    covars = []
 
         for covar in covars:
 
@@ -444,6 +571,8 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
             '''
                 Esta es la prediccion "multiplicativa"
             '''
+            if demographic_group == None:
+                demographic_group = 'pobtot'
             df_cells['cases_predicted_validation'] = df_cells.apply(lambda row: 0 if row.cases_first == 0 else ((row.cases_training/row.cases_first)*row.p_training)*row[demographic_group], axis=1)
     return df_cells.to_dict(orient='records')
 
@@ -479,3 +608,34 @@ def get_target_filter(mesh, lim_inf, lim_sup, target, attribute_filter):
             target_filter['date_occurrence__lte'] = lim_sup
 
     return target_filter
+
+
+def get_covar_filter(mesh, lim_inf, lim_sup, covar):
+    '''
+    '''
+    covar_filter = {}
+    covar_filter = mesh_occurrence_condition(mesh, covar_filter)
+    
+    if covar == 'CONFIRMADO' or covar == 'FALLECIDO':
+        covar_filter['variable_id__in'] = [5, 2, 3, 7]
+    elif covar == 'NEGATIVO':
+        covar_filter['variable_id__in'] = [1]
+    elif covar == 'PRUEBA':
+        covar_filter['variable_id__in'] = [1, 5, 2, 3]
+    elif covar == 'VACUNADO':
+        covar_filter['variable_id'] = 1
+    
+    if covar == 'FALLECIDO':
+        if lim_inf != -99999:
+            covar_filter['fecha_def__gte'] = lim_inf
+        
+        if lim_sup != -99999:
+            covar_filter['fecha_def__lte'] = lim_sup
+    else:
+        if lim_inf != -99999:
+            covar_filter['date_occurrence__gte'] = lim_inf
+        
+        if lim_sup != -99999:
+            covar_filter['date_occurrence__lte'] = lim_sup
+    
+    return covar_filter
