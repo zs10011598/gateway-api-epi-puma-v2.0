@@ -116,7 +116,7 @@ def get_irag_covariables_from_occurrences(occs):
     return covars.values()
 
 
-def get_discretized_covars(occs, covars, mesh):
+def get_discretized_covars(occs, covars, mesh, period=None):
     p = 10
 
     covars_names = [cov['name'] for cov in covars.values('name').distinct()]
@@ -154,6 +154,7 @@ def get_discretized_covars(occs, covars, mesh):
     #print(covars_tags)
 
     for covar in covars:
+
         if covar.name in list_occurrences.keys():
             setattr(covar, 'cells_' + mesh, list_occurrences[covar.name][covar.bin-1])
             setattr(covar, 'tag', covars_tags[covar.name][covar.bin-1])
@@ -161,7 +162,9 @@ def get_discretized_covars(occs, covars, mesh):
             setattr(covar, 'cells_' + mesh, [])
             setattr(covar, 'tag', None)
 
-    return covars
+        covar.name = covar.name + ('-' + str(period) if period != None else '')
+
+    return [cov for cov in covars]
 
 
 def get_limits(N, p):
