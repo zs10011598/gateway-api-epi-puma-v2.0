@@ -171,11 +171,14 @@ def get_limits(N, p):
     return [int(i*(N/p)) - int(i/p) for i in range(p+1)]
 
 
-def get_modified_variables(occs, mesh, covar, modifier, p, map_cells_pobtot, backward_period):
+def get_modified_variables(occs, mesh, covar, modifier, p, map_cells_pobtot, backward_period, derivative=''):
     '''
     '''
     covars = []
-    N = occs.count()
+    try:
+        N = occs.count()
+    except:
+        N = len(occs)
 
     has_cases = False
     new_cells = []
@@ -202,7 +205,7 @@ def get_modified_variables(occs, mesh, covar, modifier, p, map_cells_pobtot, bac
             occ['tcount'] = occ['tcount']/map_cells_pobtot[occ['gridid_' + mesh]]
 
     for i in range(10):
-        current_covar = VariableHistorical(id=int(str(backward_period)+str(10-i)), name=covar + '-' + modifier + '-' + str(backward_period), description='Periodo ' + str(backward_period), bin=10-i)
+        current_covar = VariableHistorical(id=int(str(backward_period)+str(10-i) + ('00100' if derivative == 'D' else ('00200' if derivative == 'D^2' else ''))), name=derivative + covar + '-' + modifier + '-' + str(backward_period), description=derivative + 'Periodo ' + str(backward_period), bin=10-i)
         setattr(current_covar, 'tag',  str(occs[limits[i]]['tcount']) + ':' + str(occs[limits[i+1]]['tcount']))
         cells_mun = []
         for occ in occs[limits[i]: limits[i+1]]:            
