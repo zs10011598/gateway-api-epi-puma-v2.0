@@ -133,3 +133,5 @@ env.sh
 tests/
 *swp
 test_request*
+
+reports/

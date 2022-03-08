@@ -6,6 +6,7 @@ from ..utils.aggregation import *
 from ..models.occurrence import *
 import pandas as pd
 
+import os
 
 
 class Covariables(APIView):
@@ -206,3 +207,44 @@ class CellsTimeValidation(APIView):
 									attribute_filter, covariable_modifier) 
 
 		return Response({'data': response}, status=status.HTTP_200_OK)
+
+
+class ComputedCellsTimeValidation(APIView):
+
+	def post(self, request):
+		"""
+			Description: 
+		"""
+		if 'target' in request.data.keys():
+			target = request.data['target']
+		else:
+			return Response({"message": "`target` parameter not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+		if 'demographic_group' in request.data.keys():
+			demographic_group = request.data['demographic_group']
+		else:
+			return Response({"message": "`demographic_group` parameter not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+		if 'today' in request.data.keys():
+			today = request.data['today']
+		else:
+			return Response({"message": "`today` parameter not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+		if 'gender' in request.data.keys():
+			today = request.data['gender']
+		else:
+			return Response({"message": "`gender` parameter not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+		try:
+			reports = os.listdir('./reports/')
+			initial_filename = 'QA-project42-' + target + '-' + demographic_group + '-training-' + today
+			filename = ''
+			
+			for fni in reports:
+				if fni.startswith(initial_filename):
+					filename = fni
+			
+			df = pd.read_csv('./reports/' + filename)
+			return Response({'data': df.to_dict(orient='records')}, status=status.HTTP_200_OK)
+		except:
+			return Response({"message": "Not exists a report that matches with provided configuration"}, status=status.HTTP_400_BAD_REQUEST)
