@@ -231,7 +231,7 @@ class ComputedCellsTimeValidation(APIView):
 			return Response({"message": "`today` parameter not found"}, status=status.HTTP_400_BAD_REQUEST)
 
 		if 'gender' in request.data.keys():
-			today = request.data['gender']
+			gender = request.data['gender']
 		else:
 			return Response({"message": "`gender` parameter not found"}, status=status.HTTP_400_BAD_REQUEST)
 
