@@ -61,36 +61,44 @@ class Covariables(APIView):
         else:
             covariable_modifier = None
 
+        if 'covars_cells' in request.data.keys():
+            covars_cells = request.data['covars_cells']
+        else:
+            covars_cells = False
+
         target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target, attribute_filter)
 
         #print(target_filter)
 
-        computations  = calculate_epsilon(dbs, covariable_filter, target_filter, mesh, target, demographic_group, covariable_modifier)
+        computations  = calculate_epsilon(dbs, covariable_filter, target_filter, \
+                                        mesh, target, demographic_group, covariable_modifier, 
+                                        covars_cells)
 
         N = len(computations['N'])
         response = []
         
-        for i in range(N):
-            response.append({
-                             'node': computations['node'][i],
-                             'id': computations['id'][i],
-                             'variable': computations['variable'][i],
-                             'Nx': computations['Nx'][i],
-                             'Ncx': computations['Ncx'][i],
-                             'PCX': computations['PCX'][i], 
-                             'PC': computations['PC'][i], 
-                             'Nc': computations['Nc'][i], 
-                             'N': computations['N'][i], 
-                             'epsilon': computations['epsilon'][i],
-                             'Nc_': computations['Nc_'][i],
-                             'Nc_x': computations['Nc_x'][i],
-                             'P_C': computations['P_C'][i],
-                             'P_CX': computations['P_CX'][i],
-                             's0': computations['s0'][i],
-                             'score': computations['score'][i]
-                            })
+        if not covars_cells:
+            for i in range(N):
+                response.append({
+                                 'node': computations['node'][i],
+                                 'id': computations['id'][i],
+                                 'variable': computations['variable'][i],
+                                 'Nx': computations['Nx'][i],
+                                 'Ncx': computations['Ncx'][i],
+                                 'PCX': computations['PCX'][i], 
+                                 'PC': computations['PC'][i], 
+                                 'Nc': computations['Nc'][i], 
+                                 'N': computations['N'][i], 
+                                 'epsilon': computations['epsilon'][i],
+                                 'Nc_': computations['Nc_'][i],
+                                 'Nc_x': computations['Nc_x'][i],
+                                 'P_C': computations['P_C'][i],
+                                 'P_CX': computations['P_CX'][i],
+                                 's0': computations['s0'][i],
+                                 'score': computations['score'][i]
+                                })
 
-        return Response({'data': response}, status=status.HTTP_200_OK)
+        return Response({'data': response if not covars_cells else None, 'covars': computations['covars'] if covars_cells else None}, status=status.HTTP_200_OK)
 
 
 class Cells(APIView):
@@ -199,13 +207,19 @@ class CellsTimeValidation(APIView):
         else:
             covariable_modifier = None
 
+
+        if 'epsilon_threshold' in request.data.keys():
+            epsilon_threshold = request.data['epsilon_threshold']
+        else:
+            epsilon_threshold = None
+
         #print(attribute_filter)
 
         #print(map_target_validation)
         response = calculate_score(dbs, covariable_filter, mesh, target, lim_inf_training, lim_sup_training, 
                                     lim_inf_first, lim_sup_first, 
                                     lim_inf_validation, lim_sup_validation, demographic_group,
-                                    attribute_filter, covariable_modifier) 
+                                    attribute_filter, covariable_modifier, epsilon_threshold) 
 
         return Response({'data': response}, status=status.HTTP_200_OK)
 
