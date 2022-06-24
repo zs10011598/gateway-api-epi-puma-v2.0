@@ -3,6 +3,7 @@ from .views.index import *
 from .views.vaccines import *
 from .views.analysis_population import Covariables as CovPop, Cells as CelPop, CellsTimeValidation as CTVPop, ComputedCellsTimeValidation as CCTVPop
 from .views.analysis import Covariables as Cov
+from .views.data_nodes import DataNodes
 #, Cells as Cel, CellsTimeValidation as CTV
 
 
@@ -24,4 +25,6 @@ urlpatterns = [
     #path('analysis/time-validation/', CTV.as_view(), name='ctv'),    
 
     path('analysis-population/computed-time-validation/', CCTVPop.as_view(), name='cctv_pop'),
+
+    path('nodes/', DataNodes.as_view(), name='data_nodes'),
 ]

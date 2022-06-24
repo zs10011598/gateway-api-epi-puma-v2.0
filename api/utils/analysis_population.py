@@ -16,9 +16,11 @@ import datetime as dt
 def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'variable_id__in': [2, 3], 
                                                         'date_occurrence__lte': '2020-03-31',
                                                         'date_occurrence__gte': '2020-03-01'}, 
-                      mesh='mun', target='CONFIRMADO', demographic_group=None, covariable_modifier=None):
+                      mesh='mun', target='CONFIRMADO', demographic_group=None, 
+                      covariable_modifier=None, covars_cells=False):
     '''
     '''
+    covar_cells_relation = {} 
     dict_results = {
                     'node': [],
                     'id': [],
@@ -35,8 +37,11 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
                     'P_C': [],
                     'P_CX':[],
                     's0':[],
-                    'score':[]
+                    'score':[],
                     }
+
+    if covars_cells:
+        dict_results['covars'] = []
 
     demographic_group_dict = {}
 
@@ -65,7 +70,7 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
 
 
     target_filter = mesh_occurrence_condition(mesh, target_filter)
-    print(mesh, target_filter)
+    #print(mesh, target_filter)
 
     if target == 'VACUNADO':
         target_by_cell = OccurrenceVaccines.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
@@ -126,7 +131,7 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
                 else:
                     covars_to_dicretize = VariableIRAG.objects.all().using('irag')
 
-                print('No. covars ' + str(covars_to_dicretize.count()))
+                #print('No. covars ' + str(covars_to_dicretize.count()))
 
                 delta_months = dt.timedelta(days = -backward_period*30)
 
@@ -136,7 +141,7 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
                 lim_sup_training_bp = lim_sup_training_bp.strftime("%Y-%m-%d")
                 lim_inf_training_bp = lim_inf_training_bp.strftime("%Y-%m-%d")
                 
-                print('HISTORICAL DYNAMICAL VARIABLES PERIOD ' + str(backward_period) + ' DE ' + lim_inf_training_bp + ' A ' + lim_sup_training_bp)
+                #print('HISTORICAL DYNAMICAL VARIABLES PERIOD ' + str(backward_period) + ' DE ' + lim_inf_training_bp + ' A ' + lim_sup_training_bp)
 
                 ## Filtering occs by date and name
                 if db in covariable_filter.keys():
@@ -243,11 +248,23 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
                             generated_covars_d2 = get_modified_variables(d2_occs, mesh, covar, modifier, 10, map_cells_pobtot, str(backward_period), 'D^2')
                             derivatives_covars += generated_covars_d2
 
-                        covars += get_historical_modified_variables(mesh, covars)
+                        generated_covars_d3 = get_historical_modified_variables(mesh, covars)
+
+                        covars += generated_covars_d3
 
                     covars += derivatives_covars
+
+
+                    #print(covars)
+
                 else:
                     covars = []
+
+        for gc in covars:
+            covar_cells_relation[gc.id] = gc.cells_mun
+
+        with open('./covar_cells/covar_cells_relation{0}.json'.format(db), 'w') as f:
+            f.write(json.dumps(covar_cells_relation))
 
         for covar in covars:
 
@@ -332,6 +349,22 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
             score = np.log(((Ncx + 0.005)/(Nc + 0.01))/((Nc_x + 0.01)/(Nc_+0.005)))
             dict_results['score'].append(score)
 
+            if covars_cells:
+
+                covar_cells_item = {}
+                
+                for covar in covars:
+                    covar_cells_item['id'] = covar.id
+                    #covar_cells_item['name'] = covar.name
+                    covar_cells_item['db'] = db
+                    covar_cells_item['cells_' + mesh] = getattr(covar, 'cells_' + mesh)
+                    covar_cells_item['score'] = score
+                    
+                    dict_results['covars'].append(covar_cells_item)
+
+    if covars_cells:
+        return {'covars': dict_results['covars']}
+
     return dict_results
 
 
@@ -339,10 +372,9 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
                     lim_inf_training='2020-03-01', lim_sup_training='2020-03-31', 
                     lim_inf_first=None, lim_sup_first=None, lim_inf_validation=None, 
                     lim_sup_validation=None, demographic_group=None, attribute_filter=None,
-                    covariable_modifier=None):
+                    covariable_modifier=None, epsilon_threshold=None):
     '''
     '''
-    
     demographic_group_dict = {}
     if demographic_group != None:
         demographic_group_dict = get_demographic(mesh, demographic_group)
@@ -366,9 +398,11 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
 
         map_target_first = make_map(target_first, 'gridid_' + mesh, 'tcount')
 
-        epsilon = calculate_epsilon(dbs, covariable_filter, target_filter_first, mesh, target, demographic_group, covariable_modifier)
+        epsilon = calculate_epsilon(dbs, covariable_filter, target_filter_first, mesh, target, demographic_group, covariable_modifier, False)
         s0_first = epsilon['s0'][0]
         df_epsilon_first = pd.DataFrame(epsilon)
+        if epsilon_threshold != None:
+            df_epsilon_first = df_epsilon_first[(df_epsilon_first['epsilon'] >= epsilon_threshold) | (df_epsilon_first['epsilon'] <= -epsilon_threshold)]
     else:
         map_target_first = None
         s0_first = 0
@@ -387,11 +421,15 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
 
     map_cell_score = {}
     target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target, attribute_filter)
-    epsilon = calculate_epsilon(dbs, covariable_filter, target_filter, mesh, target, demographic_group, covariable_modifier)
+    epsilon = calculate_epsilon(dbs, covariable_filter, target_filter, mesh, target, demographic_group, covariable_modifier, False)
     s0 = epsilon['s0'][0]
     df_epsilon = pd.DataFrame(epsilon)
+    if epsilon_threshold != None:
+        df_epsilon = df_epsilon[(df_epsilon['epsilon'] >= epsilon_threshold) | (df_epsilon['epsilon'] <= -epsilon_threshold)]
     cells = get_mesh(mesh)
     percentiles = 20
+
+    #print(df_epsilon.head(50))
 
     if target == 'VACUNADO':
         target_training = OccurrenceCOVID19.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
@@ -449,7 +487,7 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
                 else:
                     covars_to_dicretize = VariableIRAG.objects.all().using('irag')
 
-                print('No. covars ' + str(len(covars)))
+                #print('No. covars ' + str(len(covars)))
 
                 delta_months = dt.timedelta(days = -backward_period*30)
 
@@ -459,7 +497,7 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
                 lim_sup_training_bp = lim_sup_training_bp.strftime("%Y-%m-%d")
                 lim_inf_training_bp = lim_inf_training_bp.strftime("%Y-%m-%d")
                 
-                print('HISTORICAL DYNAMICAL VARIABLES PERIOD ' + str(backward_period) + ' DE ' + lim_inf_training_bp + ' A ' + lim_sup_training_bp)
+                #print('HISTORICAL DYNAMICAL VARIABLES PERIOD ' + str(backward_period) + ' DE ' + lim_inf_training_bp + ' A ' + lim_sup_training_bp)
 
                 ## Filtering occs by date and name
                 if db in covariable_filter.keys():
@@ -484,30 +522,89 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
             else:
                 if db in covariable_filter.keys():
 
+                    derivatives_covars = []
+
                     for covar in covariable_filter[db]:
 
-                        for backward_period in range(1, 4):
+                        for backward_period in range(4):
                             
                             delta_months = dt.timedelta(days = -backward_period*30)
-                            
                             lim_sup_training_bp = dt.datetime.strptime(lim_sup_training, '%Y-%m-%d') + delta_months
                             lim_inf_training_bp = dt.datetime.strptime(lim_inf_training, '%Y-%m-%d') + delta_months
-
                             lim_sup_training_bp = lim_sup_training_bp.strftime("%Y-%m-%d")
                             lim_inf_training_bp = lim_inf_training_bp.strftime("%Y-%m-%d")
 
                             covar_filter_bp = get_covar_filter(mesh, lim_inf_training_bp, lim_sup_training_bp, covar)
-
-                            print('HISTORICAL COVAR', covar, ': ',  covar_filter_bp)
-
                             occs = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**covar_filter_bp).annotate(tcount=Count('id')).order_by('-tcount')
-
                             modifier = covariable_modifier[db][covar]
                             generated_covars = get_modified_variables(occs, mesh, covar, modifier, 10, map_cells_pobtot, backward_period)
-    
+
                             covars += generated_covars
 
-                        covars += get_historical_modified_variables(mesh, covars)
+                            # derivatives 
+                            delta_months = dt.timedelta(days = -(backward_period + 1)*30)
+                            lim_sup_training_dbp = dt.datetime.strptime(lim_sup_training_bp, '%Y-%m-%d') + delta_months
+                            lim_inf_training_dbp = dt.datetime.strptime(lim_inf_training_bp, '%Y-%m-%d') + delta_months
+                            lim_sup_training_dbp = lim_sup_training_dbp.strftime("%Y-%m-%d")
+                            lim_inf_training_dbp = lim_inf_training_dbp.strftime("%Y-%m-%d")
+
+                            covar_filter_dbp = get_covar_filter(mesh, lim_inf_training_dbp, lim_sup_training_dbp, covar)
+                            occs_d = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**covar_filter_dbp).annotate(tcount=Count('id')).order_by('-tcount')
+
+                            d_occs = []
+                            for gridid in map_cells_pobtot.keys():
+                                tcount = 0
+                                for node in occs:
+                                    if gridid == node['gridid_' + mesh]:
+                                        tcount = node['tcount']
+                                        break
+                                for node in occs_d:
+                                    if gridid == node['gridid_' + mesh]:
+                                        tcount -= node['tcount']
+                                        break
+                                d_occs.append({'gridid_' + mesh: gridid, 'tcount': tcount})
+
+                            d_occs.sort(key=lambda x: x['tcount'], reverse=True)
+                            generated_covars_d = get_modified_variables(d_occs, mesh, covar, modifier, 10, map_cells_pobtot, str(backward_period), 'D')
+                            derivatives_covars += generated_covars_d
+
+                            # Second derivatives
+
+                            delta_months = dt.timedelta(days = -(backward_period + 2)*30)
+                            lim_sup_training_d2bp = dt.datetime.strptime(lim_sup_training_bp, '%Y-%m-%d') + delta_months
+                            lim_inf_training_d2bp = dt.datetime.strptime(lim_inf_training_bp, '%Y-%m-%d') + delta_months
+                            lim_sup_training_d2bp = lim_sup_training_d2bp.strftime("%Y-%m-%d")
+                            lim_inf_training_d2bp = lim_inf_training_d2bp.strftime("%Y-%m-%d")
+
+                            covar_filter_d2bp = get_covar_filter(mesh, lim_inf_training_d2bp, lim_sup_training_d2bp, covar)
+                            occs_d2 = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**covar_filter_d2bp).annotate(tcount=Count('id')).order_by('-tcount')
+
+                            d2_occs = []
+                            for gridid in map_cells_pobtot.keys():
+                                tcount = 0
+                                for node in occs:
+                                    if gridid == node['gridid_' + mesh]:
+                                        tcount = node['tcount']
+                                        break
+                                for node in occs_d:
+                                    if gridid == node['gridid_' + mesh]:
+                                        tcount -= 2*node['tcount']
+                                        break
+                                for node in occs_d2:
+                                    if gridid == node['gridid_' + mesh]:
+                                        tcount += node['tcount']
+                                        break
+                                d2_occs.append({'gridid_' + mesh: gridid, 'tcount': tcount})
+
+                            d2_occs.sort(key=lambda x: x['tcount'], reverse=True)
+                            generated_covars_d2 = get_modified_variables(d2_occs, mesh, covar, modifier, 10, map_cells_pobtot, str(backward_period), 'D^2')
+                            derivatives_covars += generated_covars_d2
+
+                        generated_covars_d3 = get_historical_modified_variables(mesh, covars)
+
+                        covars += generated_covars_d3
+
+                    covars += derivatives_covars
 
                 else:
                     covars = []
@@ -515,7 +612,11 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
         for covar in covars:
 
             cells_presence = getattr(covar, 'cells_' + mesh)
-            current_score = df_epsilon[(df_epsilon.node == db) & (df_epsilon.id == covar.id)].iloc[0].score
+            
+            if df_epsilon[(df_epsilon.node == db) & (df_epsilon.id == covar.id)].shape[0] > 0:
+                current_score = df_epsilon[(df_epsilon.node == db) & (df_epsilon.id == covar.id)].iloc[0].score
+            else:
+                continue
             
             df_aux = df_epsilon_first[(df_epsilon_first.node == db) & (df_epsilon_first.id == covar.id)]
             if map_target_first != None and df_aux.shape[0] > 0:
@@ -527,6 +628,8 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
                 
                 if gridid in map_cell_score.keys():
                     map_cell_score[gridid]['score_training'] += current_score
+                    if gridid == '15121':
+                        print(current_score, covar.id, covar.name, map_cell_score[gridid]['score_training'])
 
                 if map_target_first != None and gridid in map_target_first.keys():
                     map_cell_score[gridid]['score_first'] += current_score_first                    

@@ -215,7 +215,7 @@ def get_modified_variables(occs, mesh, covar, modifier, p, map_cells_pobtot, bac
     return covars
 
 
-def get_historical_modified_variables(mesh, covars):
+def get_historical_modified_variables(mesh, covars, backward_period=''):
     '''
     '''
     left_period = covars[20:]
@@ -227,7 +227,7 @@ def get_historical_modified_variables(mesh, covars):
     for lp in left_period:
         for mp in middle_period:
 
-            current_covar = VariableHistorical(id=int('3' + str(lp.bin) + '2' + str(mp.bin)), name=lp.name + '_' + mp.name, description='Periodo 3  Bin ' + str(lp.bin) + ' Periodo 2  Bin ' + str(mp.bin))
+            current_covar = VariableHistorical(id=int(backward_period + '3' + str(lp.bin) + '2' + str(mp.bin)), name=lp.name + '_' + mp.name, description='Periodo 3  Bin ' + str(lp.bin) + ' Periodo 2  Bin ' + str(mp.bin))
 
             cells_lp = getattr(lp, 'cells_' + mesh)
             cells_mp = getattr(mp, 'cells_' + mesh)
