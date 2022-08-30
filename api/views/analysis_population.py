@@ -68,8 +68,6 @@ class Covariables(APIView):
 
         target_filter = get_target_filter(mesh, lim_inf_training, lim_sup_training, target, attribute_filter)
 
-        #print(target_filter)
-
         computations  = calculate_epsilon(dbs, covariable_filter, target_filter, \
                                         mesh, target, demographic_group, covariable_modifier, 
                                         covars_cells)

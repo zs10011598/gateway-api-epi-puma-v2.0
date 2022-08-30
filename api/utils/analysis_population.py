@@ -319,7 +319,7 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
             #print('PC => ', PC)
 
             ## epsilon
-            if Nx == 0:
+            if Nx == 0 or PC == 0:
                 epsilon = 0
             else:
                 epsilon = (Nx*(PCX - PC))/ ((Nx*PC*(1 - PC))**0.5)
@@ -390,6 +390,7 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
 
     if lim_inf_first != None and lim_sup_first != None:
         target_filter_first = get_target_filter(mesh, lim_inf_first, lim_sup_first, target, attribute_filter)
+        print(target_filter_first)
 
         if target == 'VACUNADO':
             target_first = OccurrenceCOVID19.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter_first).annotate(tcount=Count('id'))
