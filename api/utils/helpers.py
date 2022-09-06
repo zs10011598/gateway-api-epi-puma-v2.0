@@ -3,7 +3,7 @@ from ..serializers.cell import *
 from ..models.occurrence import *
 from ..models.variable import *
 from collections import namedtuple 
-from django.db.models import Sum
+from django.db.models import Sum, Count
 
 
 
@@ -63,6 +63,37 @@ def get_demographic(mesh, demographic_group):
 
     for item in qs:
         demographic_map[item[gridid]] = item[demographic_group]*item['pobtot']
+
+    return demographic_map
+
+
+def get_demographic_dge(mesh, demographic_group, target_filter):
+    '''
+    '''
+    gridid = 'gridid_' + mesh
+    filt = target_filter.copy()
+    if demographic_group == 'p_60ymas':
+        filt['edad__gte'] = 60
+    elif demographic_group == 'p_50a59':
+        filt['edad__gte'] = 50
+        filt['edad__lte'] = 59
+    elif demographic_group == 'p_40a49':
+        filt['edad__gte'] = 40
+        filt['edad__lte'] = 49
+    elif demographic_group == 'p_30a39':
+        filt['edad__gte'] = 30
+        filt['edad__lte'] = 39
+    elif demographic_group == 'p_18a29':
+        filt['edad__gte'] = 18
+        filt['edad__lte'] = 29
+
+    qs = OccurrenceCOVID19.objects.using('covid19').\
+            values('gridid_' + mesh).filter(**filt).annotate(tcount=Count('id'))
+
+    demographic_map = {}
+
+    for item in qs:
+        demographic_map[item[gridid]] = item['tcount']
 
     return demographic_map
 
@@ -287,3 +318,53 @@ def get_historical_modified_variables(mesh, covars, backward_period=''):
                     historical_covars.append(current_covar)
 
     return historical_covars
+
+
+def build_covariable_attribute(db, mesh, attribute, attribute_values, lim_inf, lim_sup, bins=10):
+    """
+        Description: get a covariable from attribute
+    """
+    attribute_filter = {'date_occurrence__lte': lim_sup, \
+        'date_occurrence__gte': lim_inf, attribute + '__in': attribute_values}
+    results = OccurrenceCOVID19.objects.using(db).values('gridid_' + mesh).\
+        filter(**attribute_filter).annotate(tcount=Count('id')).order_by('-tcount')
+    
+    cells = get_mesh(mesh)
+    cells_last_bin = {getattr(cell, 'gridid_' + mesh): False for cell in cells}
+    
+    tresults = {}
+    bin_size = int(cells.count()/10)
+    bins_list = []
+    last_bin = 10
+    for i in range(bins):
+        bins_list.append({'name': attribute + '-' + str(10-i), 'cells_' + mesh: [], 'interval': ''})
+        last_bin = i
+        if results.count() - bin_size*i >= 0:
+            pass
+        else:
+            break
+
+    i = 0
+    lim_sup = results[0]['tcount']
+    lim_inf = results[0]['tcount']
+    is_lim_sup = True
+    for j in range(results.count()):
+        if is_lim_sup:
+            lim_sup = results[j]['tcount']
+            is_lim_sup = False
+        if j < (i+1)*bin_size:
+            gridid = results[j]['gridid_' + mesh]
+            bins_list[i]['cells_' + mesh].append(gridid)
+            cells_last_bin[gridid] = True
+        else:
+            lim_inf = results[j]['tcount']
+            bins_list[i]['interval'] = str(lim_inf) + ':' + str(lim_sup)
+            i += 1
+            is_lim_sup = True
+
+    bins_list[-1]['interval'] = '0:0'
+    for k in cells_last_bin.keys():
+        if not cells_last_bin[k]:
+            bins_list[-1]['cells_' + mesh].append(k)
+
+    return bins_list

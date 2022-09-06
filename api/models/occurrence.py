@@ -44,6 +44,17 @@ class OccurrenceCOVID19(models.Model):
     fecha_def = models.CharField(max_length=100)
     edad = models.IntegerField()
     sexo = models.CharField(max_length=50)
+    neumonia = models.CharField(max_length=10)
+    embarazo = models.CharField(max_length=10)
+    diabetes = models.CharField(max_length=10)
+    epoc = models.CharField(max_length=10)
+    asma = models.CharField(max_length=10)
+    inmusupr = models.CharField(max_length=10)
+    hipertension = models.CharField(max_length=10)
+    cardiovascular = models.CharField(max_length=10)
+    obesidad = models.CharField(max_length=10)
+    renal_cronica = models.CharField(max_length=10)
+    tabaquismo = models.CharField(max_length=10)
 
     class Meta:
         managed = False

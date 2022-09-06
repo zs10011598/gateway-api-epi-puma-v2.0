@@ -135,3 +135,5 @@ tests/
 test_request*
 
 reports/
+
+covar_cells/
