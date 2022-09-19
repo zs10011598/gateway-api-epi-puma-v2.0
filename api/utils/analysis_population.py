@@ -263,8 +263,8 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
         for gc in covars:
             covar_cells_relation[gc.id] = gc.cells_mun
 
-        with open('./covar_cells/covar_cells_relation{0}.json'.format(db), 'w') as f:
-            f.write(json.dumps(covar_cells_relation))
+        #with open('./covar_cells/covar_cells_relation{0}.json'.format(db), 'w') as f:
+        #    f.write(json.dumps(covar_cells_relation))
 
         for covar in covars:
 
