@@ -664,7 +664,7 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
                     cummulated_length += df_cells.iloc[upper_first][demographic_group]
                 else:    
                     cummulated_length += df_cells.iloc[upper_first].pobtot
-                up_firstpper_first += 1
+                upper_first += 1
             aux_first = upper_first
 
             cases_percentil_first = df_cells.iloc[lower_first:upper_first].cases_first.sum()
