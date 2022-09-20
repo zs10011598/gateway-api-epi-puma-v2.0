@@ -246,27 +246,34 @@ class ComputedCellsTimeValidation(APIView):
             gender = request.data['gender']
         else:
             return Response({"message": "`gender` parameter not found"}, status=status.HTTP_400_BAD_REQUEST)
-
-        a_month_ago = dt.datetime.strptime(today, '%Y-%m-%d') + dt.timedelta(days = -31)
-        a_month_ago = a_month_ago.strftime("%Y-%m-%d")
-
-        yesterday = dt.datetime.strptime(today, '%Y-%m-%d') + dt.timedelta(days = -1)
-        yesterday = yesterday.strftime("%Y-%m-%d")
         
         try:
             reports = os.listdir('./reports/')
-            initial_filename = 'QA-project42-' + target + '-' + demographic_group + '-training-' + a_month_ago + 'a' + yesterday
             filename = ''
             
-            print(initial_filename)
+            ndays = -1
+            nmonths= -31
+            while filename == '':
+                a_month_ago = dt.datetime.strptime(today, '%Y-%m-%d') + dt.timedelta(days = nmonths)
+                a_month_ago = a_month_ago.strftime("%Y-%m-%d")
+                yesterday = dt.datetime.strptime(today, '%Y-%m-%d') + dt.timedelta(days = ndays)
+                yesterday = yesterday.strftime("%Y-%m-%d")
+                initial_filename = 'QA-project42-' + target + '-' + demographic_group + '-training-' + a_month_ago + 'a' + yesterday
+                print(initial_filename)
+                for fni in reports:
+                    if fni.startswith(initial_filename):
+                        filename = fni
+                        break
+                ndays -= 1
+                nmonths -= 1
 
-            for fni in reports:
-                print(fni)
-                if fni.startswith(initial_filename):
-                    filename = fni
+                if ndays < -1000000:
+                    break
             
             df = pd.read_csv('./reports/' + filename)
-            return Response({'data': df.to_dict(orient='records')}, status=status.HTTP_200_OK)
+            last_available_date = dt.datetime.strptime(today, '%Y-%m-%d') + dt.timedelta(days = ndays+2)
+            last_available_date = last_available_date.strftime("%Y-%m-%d")
+            return Response({'data': df.to_dict(orient='records'), 'last_available_date': last_available_date}, status=status.HTTP_200_OK)
         except:
             return Response({"message": "Not exists a report that matches with provided configuration"}, status=status.HTTP_400_BAD_REQUEST)
 
