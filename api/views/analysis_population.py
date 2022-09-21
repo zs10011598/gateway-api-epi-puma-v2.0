@@ -325,7 +325,7 @@ class CovariablesDGE(APIView):
         computations, covars = calculate_epsilon_dge(target_filter, mesh, target,\
             demographic_group, covariable_modifier)
 
-        print(computations)
+        #print(computations)
         N = len(computations['N'])
         response = []
         
@@ -421,5 +421,8 @@ class CellsTimeValidationDGE(APIView):
         response = calculate_score_dge(mesh, target, lim_inf_training, lim_sup_training, 
             lim_inf_first, lim_sup_first, lim_inf_validation, lim_sup_validation, demographic_group, 
             attribute_filter, covariable_modifier)
+
+        if response == None:
+            return Response({'message': 'Target class is empty'}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'data': response}, status=status.HTTP_200_OK)
