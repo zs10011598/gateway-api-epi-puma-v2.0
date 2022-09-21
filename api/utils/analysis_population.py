@@ -960,8 +960,11 @@ def calculate_score_dge(mesh='mun', target='CONFIRMADO', lim_inf_training='2020-
 
     if lim_inf_first != None and lim_sup_first != None:
         target_filter_first = get_target_filter(mesh, lim_inf_first, lim_sup_first, target, attribute_filter)
-        print(target_filter_first)
+        #print(target_filter_first)
         target_first = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter_first).annotate(tcount=Count('id'))
+        #print(target_first)
+        if target_first.count() == 0:
+            return None
         map_target_first = make_map(target_first, 'gridid_' + mesh, 'tcount')
         epsilon, covars_inf = calculate_epsilon_dge(target_filter_first, mesh, target, demographic_group, covariable_modifier)
         s0_first = epsilon['s0'][0]
@@ -983,6 +986,9 @@ def calculate_score_dge(mesh='mun', target='CONFIRMADO', lim_inf_training='2020-
     df_epsilon = pd.DataFrame(epsilon)
     percentiles = 20
     target_training = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
+    #print(target_training)
+    if target_training.count() == 0:
+        return None
     map_target_training = make_map(target_training, 'gridid_' + mesh, 'tcount')
 
     for cell in cells:
