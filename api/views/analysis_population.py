@@ -7,6 +7,7 @@ from ..models.occurrence import *
 import pandas as pd
 import datetime as dt
 
+import json
 import os
 
 
@@ -426,3 +427,4 @@ class CellsTimeValidationDGE(APIView):
             return Response({'message': 'Target class is empty'}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'data': response}, status=status.HTTP_200_OK)
+
