@@ -4,7 +4,7 @@ from .views.vaccines import *
 from .views.analysis_population import Covariables as CovPop, Cells as CelPop, \
     CellsTimeValidation as CTVPop, ComputedCellsTimeValidation as CCTVPop, CovariablesDGE as CDGEPop, \
     CellsTimeValidationDGE as CTDGEPop
-from .views.analysis import Covariables as Cov
+from .views.analysis import Covariables as Cov, CellsEnsamble as Cel
 from .views.data_nodes import DataNodes
 #, Cells as Cel, CellsTimeValidation as CTV
 
@@ -31,5 +31,6 @@ urlpatterns = [
     path('nodes/', DataNodes.as_view(), name='data_nodes'),
 
     path('analysis-population/covariables-dge/', CDGEPop.as_view(), name='cov_dge_pop'),
-    path('analysis-population/time-validation-dge/', CTDGEPop.as_view(), name='ctv_dge_pop'),
+    
+    path('analysis/cells/', Cel.as_view(), name='cells_ensamble'),
 ]

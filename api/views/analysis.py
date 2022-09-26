@@ -5,7 +5,7 @@ from ..models.occurrence import *
 import pandas as pd
 from .analysis_population import get_target_filter
 from ..utils.analysis import *
-
+import json
 
 
 class Covariables(APIView):
@@ -77,3 +77,14 @@ class Covariables(APIView):
 							})
 
 		return Response({'data': response}, status=status.HTTP_200_OK)
+
+
+class CellsEnsamble(APIView):
+
+    def post(self, request):
+
+        jsonf = None
+        with open('./mock/epi-species-mock.json') as f:
+            jsonf = str(f.read())
+
+        return Response(json.loads(jsonf), status=status.HTTP_200_OK)
