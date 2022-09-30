@@ -55,6 +55,8 @@ class OccurrenceCOVID19(models.Model):
     obesidad = models.CharField(max_length=10)
     renal_cronica = models.CharField(max_length=10)
     tabaquismo = models.CharField(max_length=10)
+    uci = models.CharField(max_length=15)
+    intubado = models.CharField(max_length=15)
 
     class Meta:
         managed = False

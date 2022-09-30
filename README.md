@@ -15,4 +15,4 @@ $ pip3 install -r requirements.txt
 
 ## Author
 
--Pedro Romero Martinez [zs10011598@gmail.com]
+-Pedro Romero Martinez [pedro.romero@c3.unam.mx]
