@@ -149,12 +149,10 @@ def calculate_results_cells(target, occurrences):
     s0 = df_covars.iloc[0]['s0']
     results_covariables = None
     for occ in occurrences:
-        occ['edad'] = map_age_group(occ['edad'])
-        print(occ)
         score = 0
-        occ['s0'] = s0
+        occ['edad'] = map_age_group(occ['edad'])
+        occ['score'] = s0
         for variable in variables:
             score += df_covars[(df_covars['variable'] == variable) & (df_covars['value'] == occ[variable])]['score'].iloc[0]
-            print(score)
         occ['score'] = score
     return occurrences
