@@ -5,7 +5,7 @@ from .views.analysis_population import Covariables as CovPop, Cells as CelPop, \
     CellsTimeValidation as CTVPop, ComputedCellsTimeValidation as CCTVPop, CovariablesDGE as CDGEPop, \
     CellsTimeValidationDGE as CTDGEPop
 from .views.analysis import Covariables as Cov, CellsEnsamble as Cel
-from .views.dge import Covariables as DGECov, Cells as DGECell
+from .views.dge import Covariables as DGECov, Cells as DGECell, GetHistoricalProfile as GHP
 from .views.data_nodes import DataNodes
 #, Cells as Cel, CellsTimeValidation as CTV
 
@@ -37,4 +37,6 @@ urlpatterns = [
 
     path('dge/covariables/', DGECov.as_view(), name='dge_covariables'),
     path('dge/cells/', DGECell.as_view(), name='dge_cells'),    
+
+    path('dge/profile/', GHP.as_view(), name='dge_historical_profile'),    
 ]
