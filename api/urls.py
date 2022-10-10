@@ -5,7 +5,8 @@ from .views.analysis_population import Covariables as CovPop, Cells as CelPop, \
     CellsTimeValidation as CTVPop, ComputedCellsTimeValidation as CCTVPop, CovariablesDGE as CDGEPop, \
     CellsTimeValidationDGE as CTDGEPop
 from .views.analysis import Covariables as Cov, CellsEnsamble as Cel
-from .views.dge import Covariables as DGECov, Cells as DGECell, GetHistoricalProfile as GHP
+from .views.dge import Covariables as DGECov, Cells as DGECell, GetHistoricalProfile as GHP,\
+    AvailableDateAnalysis as ADA, GetProfileCovariable as GPC, GetROCCurve as GROCC
 from .views.data_nodes import DataNodes
 #, Cells as Cel, CellsTimeValidation as CTV
 
@@ -37,6 +38,8 @@ urlpatterns = [
 
     path('dge/covariables/', DGECov.as_view(), name='dge_covariables'),
     path('dge/cells/', DGECell.as_view(), name='dge_cells'),    
-
     path('dge/profile/', GHP.as_view(), name='dge_historical_profile'),    
+    path('dge/available-date-analysis/', ADA.as_view(), name='available_date_analysis'), 
+    path('dge/covariables/profile/', GPC.as_view(), name='dge_get_profile_covariable'),
+    path('dge/roc/', GROCC.as_view(), name='dge_get_roc_curve'),   
 ]
