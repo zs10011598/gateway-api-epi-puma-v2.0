@@ -40,13 +40,8 @@ class Covariables(APIView):
             target_attributes = {}
             delta_period = dt.timedelta(days = period)
             final_date = dt.datetime.strptime(initial_date, '%Y-%m-%d') + delta_period
-
-            if target == 'FALLECIDO':
-                target_attributes['fecha_def__gte'] = initial_date
-                target_attributes['fecha_def__lt'] = final_date.strftime('%Y-%m-%d')
-            else:
-                target_attributes['date_occurrence__gte'] = initial_date
-                target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
+            target_attributes['date_occurrence__gte'] = initial_date
+            target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
             
             occurrences = OccurrenceCOVID19.objects.using('covid19').filter(**target_attributes).values()
             
@@ -87,13 +82,8 @@ class Cells(APIView):
             target_attributes = {}
             delta_period = dt.timedelta(days = period)
             final_date = dt.datetime.strptime(initial_date, '%Y-%m-%d') + delta_period
-
-            if target == 'FALLECIDO':
-                target_attributes['fecha_def__gte'] = initial_date
-                target_attributes['fecha_def__lt'] = final_date.strftime('%Y-%m-%d')
-            else:
-                target_attributes['date_occurrence__gte'] = initial_date
-                target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
+            target_attributes['date_occurrence__gte'] = initial_date
+            target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
             
             occurrences = OccurrenceCOVID19.objects.using('covid19').filter(**target_attributes).values()
 
@@ -139,7 +129,7 @@ class GetHistoricalProfile(APIView):
 
             df = None
             for rocc in reports_occ:
-                date = rcov.split(data['target']+'-')[1].split('.csv')[0][:-3]
+                date = rocc.split(data['target']+'-')[1].split('.csv')[0][:-3]
                 df = pd.read_csv('./reports/{0}'.format(rocc))
                 df = df.sort_values('score', ascending=False)
                 df = df.reset_index(drop=True)
@@ -164,11 +154,78 @@ class GetHistoricalProfile(APIView):
                     probability = Nc/float(percentile_length)
                     periods[date]['bin-{0}'.format(20-i)]['probability'] = probability
 
-                    if periods[date]['profile_score'] >= min_score:
+                    periods[date]['profile_bin'] = 20
+                    if periods[date]['profile_score'] <= max_score:
                         periods[date]['profile_bin'] = 20 - i
                         periods[date]['target_profile_probability'] = probability
 
             return Response({'data': periods}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'message': 'something was wrong: {0}'.format(str(e))}\
+                , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+class AvailableDateAnalysis(APIView):
+
+    def get(self, request):
+        try:
+            if not 'target' in request.GET.keys():
+                return Response({'message': '`target` parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                target = request.GET['target']
+            reports = os.listdir('./reports/')
+            reports_cov = [r for r in reports if r.startswith('dge-') and target in r and 'occurrences' in r]
+            return Response({
+                'data': [rcov.split(target+'-')[1].split('.csv')[0][:-3] for rcov in reports_cov]}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'message': 'something was wrong: {0}'.format(str(e))}\
+                , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+class GetProfileCovariable(APIView):
+
+    def post(self, request):
+        try:
+            target = request.data['target']
+            date = request.data['date']
+            reports = os.listdir('./reports/')
+            report_cov = None
+            for r in reports:
+                if target in r and date in r and 'occurrences' in r:
+                    report_cov = './reports/dge-covariables-' + target + '-' + date + '-30' + '.csv'
+                    break
+            if report_cov == None:
+                return Response({'message': '`date` not available'}, status=status.HTTP_400_BAD_REQUEST)
+            df_cov = pd.read_csv(report_cov)
+            return Response({'data': df_cov.to_dict(orient='records')}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'message': 'something was wrong: {0}'.format(str(e))}\
+                , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GetROCCurve(APIView):
+
+    def post(self, request):
+        try:
+            target = request.data['target']
+            date = request.data['date']
+            reports = os.listdir('./reports/')
+            report_occ = None
+            for r in reports:
+                if target in r and date in r and 'occurrences' in r:
+                    report_occ = './reports/' + r
+                    break
+            if report_occ == None:
+                return Response({'message': '`date` not available'}, status=status.HTTP_400_BAD_REQUEST)
+           
+            df_occ = pd.read_csv(report_occ)
+            df_occ = df_occ.sort_values('score', ascending=True)
+            df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
+            df_occ = df_occ[['score', 'target']]
+
+            return Response({'data': df_occ.to_dict(orient='records')}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
                 , status=status.HTTP_500_INTERNAL_SERVER_ERROR)

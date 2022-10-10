@@ -156,3 +156,29 @@ def calculate_results_cells(target, occurrences):
             score += df_covars[(df_covars['variable'] == variable) & (df_covars['value'] == occ[variable])]['score'].iloc[0]
         occ['score'] = score
     return occurrences
+
+
+def is_target(x, target):
+    """
+        Description: Decides if a record is target
+    """
+    target_column_map = {
+        'HOSPITALIZADO': 'uci', 
+        'NEUMONIA': 'neumonia', 
+        'INTUBADO': 'intubado'}
+
+    if target == 'CONFIRMADO':
+        if x['variable_id'] in [5, 2, 3, 7]:
+            return 1
+        else:
+            return 0 
+    elif target == 'FALLECIDO':
+        if x['variable_id'] in [5, 2, 3, 7] and x['fecha_def'] != '9999-99-99':
+            return 1
+        else:
+            return 0
+    else:
+        if x['variable_id'] in [5, 2, 3, 7] and x[target_column_map[target]]=='SI':
+            return 1
+        else:
+            return 0
