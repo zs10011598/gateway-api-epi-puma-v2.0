@@ -123,8 +123,10 @@ class GetHistoricalProfile(APIView):
                 for covariable in covariables:
                     try:
                         score = df[(df['variable'] == covariable) & (df['value'] == data[covariable])].iloc[0]['score']
+                        epsilon = df[(df['variable'] == covariable) & (df['value'] == data[covariable])].iloc[0]['epsilon']
+                        pcx = df[(df['variable'] == covariable) & (df['value'] == data[covariable])].iloc[0]['PCX']
                         score_total += score
-                        periods[date][covariable] = {'value': data[covariable], 'score': score}                    
+                        periods[date][covariable] = {'value': data[covariable], 'score': score, 'epsilon': epsilon, 'PCX': pcx}                    
                     except Exception as e:
                         print(str(e))
                 periods[date]['profile_score'] = score_total
