@@ -115,8 +115,10 @@ class GetHistoricalProfile(APIView):
                 periods[date] = {}
                 age_group = map_age_group(data['edad'])
                 score = df[(df['variable'] == 'edad') & (df['value'] == age_group)].iloc[0]['score']
+                epsilon = df[(df['variable'] == 'edad') & (df['value'] == age_group)].iloc[0]['epsilon']
+                pcx = df[(df['variable'] == 'edad') & (df['value'] == age_group)].iloc[0]['PCX']
                 score_total += score
-                periods[date]['edad'] = {'value': age_group, 'score': score}
+                periods[date]['edad'] = {'value': age_group, 'score': score, 'epsilon': epsilon, 'PCX': pcx}
 
                 for covariable in covariables:
                     try:
