@@ -104,3 +104,49 @@ class OccurrenceIRAG(models.Model):
     class Meta:
         managed = False
         db_table = 'occurrence'
+
+
+class OccurrenceEpiSpecies(models.Model):
+
+    reino = models.CharField(max_length=255)
+    phylum = models.CharField(max_length=255)
+    clase = models.CharField(max_length=255)
+    orden = models.CharField(max_length=255)
+    familia = models.CharField(max_length=255)
+    genero = models.CharField(max_length=255)
+    nombrecientifico = models.CharField(max_length=255)
+    gridid_state = models.CharField(max_length=2) 
+    gridid_mun = models.CharField(max_length=5)
+    gridid_ageb = models.CharField(max_length=10)
+    gridid_64km = models.CharField(max_length=10)
+    gridid_32km = models.CharField(max_length=10)
+    gridid_16km = models.CharField(max_length=10)
+    nombreenfermedad= models.CharField(max_length=10)
+    sexo = models.CharField(max_length=2)
+    edad = models.IntegerField()
+    numeroindividuos = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'ocurrence'
+
+
+class OccurrenceSNIB(models.Model):
+
+    reinovalido = models.CharField(max_length=255)
+    phylumdivisionvalido = models.CharField(max_length=255)
+    clasevalida = models.CharField(max_length=255)
+    ordenvalido = models.CharField(max_length=255)
+    familiavalida = models.CharField(max_length=255)
+    generovalido = models.CharField(max_length=255)
+    especievalida = models.CharField(max_length=255)
+    gridid_state = models.CharField(max_length=2) 
+    gridid_mun = models.CharField(max_length=5)
+    gridid_ageb = models.CharField(max_length=10)
+    gridid_64km = models.CharField(max_length=10)
+    gridid_32km = models.CharField(max_length=10)
+    gridid_16km = models.CharField(max_length=10)
+
+    class Meta:
+        managed = False
+        db_table = 'ocurrence'
