@@ -57,3 +57,35 @@ class VariableHistorical(models.Model):
     bin = models.IntegerField()
     description = models.CharField(max_length=100)
     tag = models.CharField(max_length=100)
+
+
+class VariableSNIB(models.Model):
+    reinovalido = models.CharField(max_length=255)
+    phylumdivisionvalido = models.CharField(max_length=255)
+    clasevalida = models.CharField(max_length=255)
+    ordenvalido = models.CharField(max_length=255)
+    familiavalida = models.CharField(max_length=255)
+    generovalido = models.CharField(max_length=255)
+    especievalida = models.CharField(max_length=255)
+    cells_state = ArrayField(models.CharField(max_length=10, blank=True))
+    cells_mun = ArrayField(models.CharField(max_length=10, blank=True))
+    cells_ageb = ArrayField(models.CharField(max_length=10, blank=True))
+
+    class Meta:
+        managed = False
+        db_table = 'covariable' 
+
+
+class VariableWorldclim(models.Model):
+
+    label = models.CharField(max_length=255)
+    interval = models.CharField(max_length=255)
+    layer = models.CharField(max_length=255)
+    icat = models.IntegerField()
+    cells_state = ArrayField(models.CharField(max_length=10, blank=True))
+    cells_mun = ArrayField(models.CharField(max_length=10, blank=True))
+    cells_ageb = ArrayField(models.CharField(max_length=10, blank=True))
+
+    class Meta:
+        managed = False
+        db_table = 'covariable' 

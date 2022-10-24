@@ -132,6 +132,46 @@ DATABASES = {
         'NAME': os.environ['DBIRAG'],
         'USER': os.environ['DBUSER'],
         'PASSWORD': os.environ['DBPASS']
+    },
+    'patogeno': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.environ['DBHOST'],
+        'PORT': os.environ['DBPORT'],
+        'NAME': os.environ['DBPATO'],
+        'USER': os.environ['DBUSER'],
+        'PASSWORD': os.environ['DBPASS']
+    },
+    'hospedero': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.environ['DBHOST'],
+        'PORT': os.environ['DBPORT'],
+        'NAME': os.environ['DBHOSP'],
+        'USER': os.environ['DBUSER'],
+        'PASSWORD': os.environ['DBPASS']
+    },
+    'vector': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.environ['DBHOST'],
+        'PORT': os.environ['DBPORT'],
+        'NAME': os.environ['DBVECT'],
+        'USER': os.environ['DBUSER'],
+        'PASSWORD': os.environ['DBPASS']
+    },
+    'snib': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.environ['DBHOST'],
+        'PORT': os.environ['DBPORT'],
+        'NAME': os.environ['DBSNIB'],
+        'USER': os.environ['DBUSER'],
+        'PASSWORD': os.environ['DBPASS']
+    },
+    'worldclim': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.environ['DBHOST'],
+        'PORT': os.environ['DBPORT'],
+        'NAME': os.environ['DBWORL'],
+        'USER': os.environ['DBUSER'],
+        'PASSWORD': os.environ['DBPASS']
     }
 }
 
