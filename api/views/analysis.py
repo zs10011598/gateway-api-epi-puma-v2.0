@@ -204,7 +204,7 @@ class CellsEnsamble(APIView):
 
             #print(data)
             response['ok'] = True
-            response['data'] = data
+            response['data'] = data[0]
 
             data_score_cell = calculate_score_cells_ensamble(data[0])
             response['data_score_cell'] = data_score_cell
