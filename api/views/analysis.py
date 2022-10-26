@@ -209,6 +209,9 @@ class CellsEnsamble(APIView):
             data_score_cell = calculate_score_cells_ensamble(data[0])
             response['data_score_cell'] = data_score_cell
 
+            percentage_avg = caculate_decil_info(data[0], data_score_cell, 10)
+            response['percentage_avg'] = percentage_avg            
+
             validation_data = validation_data_analysis(mesh, occs_valid, data_score_cell)
             response['validation_data'] = validation_data            
             

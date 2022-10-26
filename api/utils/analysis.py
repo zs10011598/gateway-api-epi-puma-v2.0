@@ -460,3 +460,35 @@ def validation_data_analysis(mesh, occs_valid, data_score_cell):
             })        
 
     return validation_data
+
+
+def caculate_decil_info(data, data_score_cell, decil):
+    percentage_avg = []
+    cells_df = pd.DataFrame(data_score_cell)
+    cells_df = cells_df.sort_values('tscore', ascending=False)
+    length_bin = int(cells_df.shape[0]/10)
+    cells_decile = cells_df.iloc[length_bin*(10-decil): length_bin*(10-decil+1)]['gridid'].tolist()
+    N = len(cells_decile)
+
+    for cov in data:
+
+        #print(cells_decile)
+        #print(cov['cells'])
+        cells_cov_decile = len([cell for cell in cov['cells'] if cell in cells_decile])
+        if cov['nj'] != 0 and cells_cov_decile != 0:
+            occ = round(cells_cov_decile/float(cov['nj'])*100, 3)
+            occ_perdecile = round(cells_cov_decile/float(N)*100, 3)
+            percentage_avg.append({
+                "decil": decil,
+                "species": cov['generovalido'] + ' ' + cov['especieepiteto'] if cov['tipo'] == 0 else cov['label'] + ' ' + cov['tag'],
+                "epsilon": cov['epsilon'],
+                "score": cov['score'],
+                "occ": occ,
+                "occ_perdecile": occ_perdecile
+            })
+        else:
+            #print(cov['generovalido'] + ' ' + cov['especieepiteto'] if cov['tipo'] == "0" else cov['label'] + ' ' + cov['tag'])
+            #print(N, cov['nj'], cells_cov_decile)
+            pass
+
+    return percentage_avg
