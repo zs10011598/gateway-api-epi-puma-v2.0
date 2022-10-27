@@ -480,7 +480,7 @@ def caculate_decil_info(data, data_score_cell, decil):
             occ_perdecile = round(cells_cov_decile/float(N)*100, 3)
             percentage_avg.append({
                 "decil": decil,
-                "species": cov['generovalido'] + ' ' + cov['especieepiteto'] if cov['tipo'] == 0 else cov['label'] + ' ' + cov['tag'],
+                "species": cov['generovalido'] + ' ' + cov['especieepiteto'] if cov['tipo'] == "0" else cov['label'] + ' ' + cov['tag'],
                 "epsilon": cov['epsilon'],
                 "score": cov['score'],
                 "occ": occ,
