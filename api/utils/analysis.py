@@ -409,7 +409,8 @@ def calculate_epsilon_cells_ensamble(
                     'nij': dict_results['Ncx'][i], 
                     'n': dict_results['N'][i], 
                     'epsilon': dict_results['epsilon'][i],
-                    'score': dict_results['score'][i]} for i in range(M)], None)
+                    'score': dict_results['score'][i],
+                    'biotic': True if dict_results['tipo'][i] == '0' else False} for i in range(M)], None)
 
 
 def calculate_score_cells_ensamble(data):
