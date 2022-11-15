@@ -437,7 +437,7 @@ def validation_data_analysis(mesh, occs_valid, data_score_cell):
     N_sample = cells_sample_df.shape[0]
     cells_sample_df['sample'] = pd.Series([1 for i in range(N_sample)])
 
-    cells_df = cells_df.merge(cells_sample_df, on='gridid')
+    cells_df = cells_df.merge(cells_sample_df, on='gridid', how='left')
     cells_df = cells_df.reset_index(drop=True)
     cells_df['sample'] = cells_df['sample'].fillna(0)
 
