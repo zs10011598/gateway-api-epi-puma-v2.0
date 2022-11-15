@@ -102,9 +102,14 @@ class GetHistoricalProfile(APIView):
         target_column_map = {'HOSPITALIZADO': 'uci', 'NEUMONIA': 'neumonia', 'INTUBADO': 'intubado'}
         try:
             data = request.data
-            reports = os.listdir('./reports/')                      
+            reports = os.listdir('./reports/')
+
             reports_cov = [r for r in reports if r.startswith('dge-') and data['target'] in r and 'covariables' in r]
+            reports_cov.sort()
+            reports_cov = reports_cov[-5:] 
             reports_occ = [r for r in reports if r.startswith('dge-') and data['target'] in r and 'occurrences' in r]
+            reports_occ.sort()
+            reports_occ = reports_occ[-5:]
             reports = None
             periods = {}
             for rcov in reports_cov:
