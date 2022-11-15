@@ -451,7 +451,7 @@ def validation_data_analysis(mesh, occs_valid, data_score_cell):
     length_bin = N/10
     for i in range(10):
         vp = cells_df.iloc[0:int((i+1)*length_bin)]['sample'].sum()
-        fn = N_sample - vp
+        fn = N_sample - vp - nulls
         validation_data.append({
                 'decil': 10 - i,
                 'vp': vp, 
