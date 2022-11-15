@@ -442,7 +442,7 @@ def validation_data_analysis(mesh, occs_valid, data_score_cell):
     cells_df['sample'] = cells_df['sample'].fillna(0)
 
     #print(cells_df['sample'].sum())
-    dd = cells_df[~(cells_df['gridid'].isin(cells_sample_df['gridid'].tolist()))]
+    dd = cells_sample_df[~(cells_sample_df['gridid'].isin(cells_df['gridid'].tolist()))]
     #print(dd)
     nulls = dd['gridid'].tolist()
     #print(nulls)
