@@ -237,6 +237,11 @@ def calculate_epsilon_cells_ensamble(
         print(str(e))
         return (None, str(e))
 
+    # DEBUG
+    #for vc in variables_occs:
+    #    if vc['especievalida'].startswith('Alouatta palliata'):
+    #       print(vc['especievalida'], vc['cells_' + mesh])
+
     dict_results = {
         'group_name': [],
         "reinovalido": [],
@@ -247,6 +252,7 @@ def calculate_epsilon_cells_ensamble(
         "generovalido": [],
         "especieepiteto": [],
         "nombreinfra": [],
+        'especievalida': [],
         "type": [],
         "label": [],
         "layer": [],
@@ -283,6 +289,9 @@ def calculate_epsilon_cells_ensamble(
 
     for variable in variables_occs:
 
+        if len(variable['cells_' + mesh]) == 0:
+            continue
+
         dict_results['group_name'].append(variable['node'])
         
         if variable['node'] == 'inegi2020':
@@ -304,6 +313,7 @@ def calculate_epsilon_cells_ensamble(
             dict_results['unidad'].append('')
             dict_results['coeficiente'].append('')
             dict_results['tipo'].append('1')
+            dict_results['especievalida'].append(variable['name'] + ' ' + variable['interval'])
         elif variable['node'] == 'snib':
             dict_results['reinovalido'].append(variable['reinovalido'])
             dict_results['phylumdivisionvalido'].append(variable['phylumdivisionvalido'])
@@ -323,6 +333,7 @@ def calculate_epsilon_cells_ensamble(
             dict_results['unidad'].append('')
             dict_results['coeficiente'].append('')
             dict_results['tipo'].append('0')
+            dict_results['especievalida'].append(variable['especievalida'])
         elif variable['node'] == 'worldclim':
             #print(variable.keys())
             dict_results['reinovalido'].append('')
@@ -342,6 +353,7 @@ def calculate_epsilon_cells_ensamble(
             dict_results['unidad'].append('')
             dict_results['coeficiente'].append('')
             dict_results['tipo'].append('1')
+            dict_results['especievalida'].append(variable['label'] + ' ' + variable['interval'])
         
         dict_results['cells'].append(variable['cells_' + mesh])
         target_cells = list(set([occ['gridid_' + mesh] for occ in occs]))
@@ -394,6 +406,7 @@ def calculate_epsilon_cells_ensamble(
                     "generovalido": dict_results['generovalido'][i],
                     "especieepiteto": dict_results['especieepiteto'][i],
                     "nombreinfra": dict_results['nombreinfra'][i],
+                    "especievalida": dict_results['especievalida'][i],
                     "type": dict_results['type'][i],
                     "label": dict_results['label'][i],
                     "layer": dict_results['layer'][i],
@@ -463,33 +476,35 @@ def validation_data_analysis(mesh, occs_valid, data_score_cell):
     return validation_data
 
 
-def caculate_decil_info(data, data_score_cell, decil):
+def caculate_decil_info(data, data_score_cell, deciles):
     percentage_avg = []
     cells_df = pd.DataFrame(data_score_cell)
     cells_df = cells_df.sort_values('tscore', ascending=False)
     length_bin = int(cells_df.shape[0]/10)
-    cells_decile = cells_df.iloc[length_bin*(10-decil): length_bin*(10-decil+1)]['gridid'].tolist()
-    N = len(cells_decile)
 
-    for cov in data:
+    for decil in deciles:
+        cells_decile = cells_df.iloc[length_bin*(10-decil): length_bin*(10-decil+1)]['gridid'].tolist()
+        N = len(cells_decile)
 
-        #print(cells_decile)
-        #print(cov['cells'])
-        cells_cov_decile = len([cell for cell in cov['cells'] if cell in cells_decile])
-        if cov['nj'] != 0 and cells_cov_decile != 0:
-            occ = round(cells_cov_decile/float(cov['nj'])*100, 3)
-            occ_perdecile = round(cells_cov_decile/float(N)*100, 3)
-            percentage_avg.append({
-                "decil": decil,
-                "species": cov['generovalido'] + ' ' + cov['especieepiteto'] if cov['tipo'] == "0" else cov['label'] + ' ' + cov['tag'],
-                "epsilon": cov['epsilon'],
-                "score": cov['score'],
-                "occ": occ,
-                "occ_perdecile": occ_perdecile
-            })
-        else:
-            #print(cov['generovalido'] + ' ' + cov['especieepiteto'] if cov['tipo'] == "0" else cov['label'] + ' ' + cov['tag'])
-            #print(N, cov['nj'], cells_cov_decile)
-            pass
+        for cov in data:
+
+            #print(cells_decile)
+            #print(cov['cells'])
+            cells_cov_decile = len([cell for cell in cov['cells'] if cell in cells_decile])
+            if cov['nj'] != 0 and cells_cov_decile != 0:
+                occ = round(cells_cov_decile/float(cov['nj'])*100, 3)
+                occ_perdecile = round(cells_cov_decile/float(N)*100, 3)
+                percentage_avg.append({
+                    "decil": decil,
+                    "species": cov['especievalida'] if cov['tipo'] == "0" else cov['label'] + ' ' + cov['tag'],
+                    "epsilon": cov['epsilon'],
+                    "score": cov['score'],
+                    "occ": occ,
+                    "occ_perdecile": occ_perdecile
+                })
+            else:
+                #print(cov['generovalido'] + ' ' + cov['especieepiteto'] if cov['tipo'] == "0" else cov['label'] + ' ' + cov['tag'])
+                #print(N, cov['nj'], cells_cov_decile)
+                pass
 
     return percentage_avg
