@@ -141,6 +141,7 @@ class CovariablesCellsEnsamble(APIView):
 
         return Response({'ok': True, 'data': epsilon_r[0], 'message': epsilon_r[1]}, status=status.HTTP_200_OK)
 
+
 class CellsEnsamble(APIView):
 
     def post(self, request):
@@ -209,7 +210,10 @@ class CellsEnsamble(APIView):
             data_score_cell = calculate_score_cells_ensamble(data[0])
             response['data_score_cell'] = data_score_cell
 
-            percentage_avg = caculate_decil_info(data[0], data_score_cell, 10)
+            percentage_avg = caculate_decil_info(
+                data[0], 
+                data_score_cell, 
+                body.data['selected_decile'] if 'selected_decile' in body.data.keys() else [10])
             response['percentage_avg'] = percentage_avg            
 
             validation_data = validation_data_analysis(mesh, occs_valid, data_score_cell)
