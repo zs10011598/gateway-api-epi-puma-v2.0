@@ -291,6 +291,8 @@ def calculate_epsilon_cells_ensamble(
 
         if len(variable['cells_' + mesh]) == 0:
             continue
+        elif variable['node'] == 'snib' and len(variable['especievalida'].split(' ')) > 2:
+            continue
 
         dict_results['group_name'].append(variable['node'])
         
