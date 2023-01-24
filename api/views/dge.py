@@ -42,9 +42,13 @@ class Covariables(APIView):
             final_date = dt.datetime.strptime(initial_date, '%Y-%m-%d') + delta_period
             target_attributes['date_occurrence__gte'] = initial_date
             target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
+            target_attributes['variable_id__in'] = [5, 2, 3, 7]
             
-            occurrences = OccurrenceCOVID19.objects.using('covid19').filter(**target_attributes).values()
+            occurrences = OccurrenceCOVID19.objects.using('covid19').\
+                filter(**target_attributes).values()
             
+            print('# Occs: ' + str(occurrences.count()))
+
             results_covariables = calculate_results_covariables(target, occurrences)
             return Response({'covariables': results_covariables}, status=status.HTTP_200_OK)
         
@@ -84,8 +88,10 @@ class Cells(APIView):
             final_date = dt.datetime.strptime(initial_date, '%Y-%m-%d') + delta_period
             target_attributes['date_occurrence__gte'] = initial_date
             target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
+            target_attributes['variable_id__in'] = [5, 2, 3, 7]
             
-            occurrences = OccurrenceCOVID19.objects.using('covid19').filter(**target_attributes).values()
+            occurrences = OccurrenceCOVID19.objects.using('covid19').\
+                filter(**target_attributes).values()
 
             results_cells = calculate_results_cells(target, occurrences)
             return Response({'occurences': results_cells}, status=status.HTTP_200_OK)
@@ -98,12 +104,20 @@ class Cells(APIView):
 class GetHistoricalProfile(APIView):
 
     def post(self, request):
-        covariables = ['gridid_mun', 'sexo', 'embarazo', 'diabetes', 'epoc', 'asma', 'inmusupr', 'hipertension', 'cardiovascular', 'obesidad', 'renal_cronica', 'tabaquismo']
-        target_column_map = {'HOSPITALIZADO': 'uci', 'NEUMONIA': 'neumonia', 'INTUBADO': 'intubado'}
+        covariables = [\
+            'gridid_mun', \
+            'sexo', 'embarazo', 'diabetes', \
+            'epoc', 'asma', 'inmusupr', \
+            'hipertension', 'cardiovascular', \
+            'obesidad', 'renal_cronica', \
+            'tabaquismo']
+        target_column_map = {\
+            'HOSPITALIZADO': 'uci', \
+            'NEUMONIA': 'neumonia', \
+            'INTUBADO': 'intubado'}
         try:
             data = request.data
             reports = os.listdir('./reports/')
-
             reports_cov = [r for r in reports if r.startswith('dge-') and data['target'] in r and 'covariables' in r]
             reports_cov.sort()
             reports_cov = reports_cov[-5:] 

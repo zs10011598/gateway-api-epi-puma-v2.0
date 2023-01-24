@@ -15,7 +15,7 @@ import datetime as dt
 def calculate_results_covariables(target, occurrences):
     """
         Description: calculate epsilon, score, etc for covariables
-        'CONFIRMADO', 'HOSPITALIZADO', 'NEUMONIA', 'INTUBADO', 'FALLECIDO'
+        'HOSPITALIZADO', 'NEUMONIA', 'INTUBADO', 'FALLECIDO'
     """
     results_covariables = []
     target_column_map = {'HOSPITALIZADO': 'uci', 'NEUMONIA': 'neumonia', 'INTUBADO': 'intubado'}
