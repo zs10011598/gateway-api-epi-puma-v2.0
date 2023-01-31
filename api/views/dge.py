@@ -244,6 +244,8 @@ class GetROCCurve(APIView):
                 return Response({'message': '`date` not available'}, status=status.HTTP_400_BAD_REQUEST)
            
             df_occ = pd.read_csv(report_occ)
+            if target != 'CONFIRMADO' and target != 'FALLECIDO':
+                df_occ = df_occ[(df_occ[target]=='SI') | (df_occ[target]=='NO')]
             df_occ = df_occ.sort_values('score', ascending=True)
             df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
             df_occ = df_occ[['score', 'target']]
