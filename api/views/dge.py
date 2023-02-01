@@ -245,7 +245,11 @@ class GetROCCurve(APIView):
            
             df_occ = pd.read_csv(report_occ)
             if target != 'CONFIRMADO' and target != 'FALLECIDO':
-                df_occ = df_occ[(df_occ[target.lower()]=='SI') | (df_occ[target.lower()]=='NO')]
+                target_column_map = {\
+                    'HOSPITALIZADO': 'uci', \
+                    'NEUMONIA': 'neumonia', \
+                    'INTUBADO': 'intubado'}
+                df_occ = df_occ[(df_occ[target_column_map[target]]=='SI') | (df_occ[target_column_map[target]]=='NO')]
             df_occ = df_occ.sort_values('score', ascending=True)
             df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
             df_occ = df_occ[['score', 'target']]
