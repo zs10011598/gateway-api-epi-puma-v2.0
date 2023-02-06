@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from sklearn.metrics import roc_curve
 from ..utils.dge import *
 from ..utils.aggregation import *
 from ..models.occurrence import *
@@ -206,7 +207,6 @@ class AvailableDateAnalysis(APIView):
                 , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
 class GetProfileCovariable(APIView):
 
     def post(self, request):
@@ -253,8 +253,19 @@ class GetROCCurve(APIView):
             df_occ = df_occ.sort_values('score', ascending=True)
             df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
             df_occ = df_occ[['score', 'target']]
+            
+            scores = []
+            targets = []
+            for row, index in df_occ.iterrows():
+               scores.append(row['score'])
+               target.append(row['target']) 
+            
+            fpr, tpr, thresholds = roc_curve(targets, scores, pos_label=1)
+            fpr_list = fpr.tolist()
+            tpr_list = tpr.tolist()
 
-            return Response({'data': df_occ.to_dict(orient='records')}, status=status.HTTP_200_OK)
+            #return Response({'data': df_occ.to_dict(orient='records')}, status=status.HTTP_200_OK)
+            return Response({"data_roc":[{"fpr":fpr_list},{"tpr":tpr_list}]}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
                 , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
