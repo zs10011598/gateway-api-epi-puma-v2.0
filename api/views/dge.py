@@ -254,13 +254,13 @@ class GetROCCurve(APIView):
             df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
             df_occ = df_occ[['score', 'target']]
             
-            scores = []
-            targets = []
-            for row, index in df_occ.iterrows():
-               scores.append(row['score'])
-               target.append(row['target']) 
-            
-            fpr, tpr, thresholds = roc_curve(targets, scores, pos_label=1)
+            scores_l = []
+            targets_l = []
+            for index, row in df_occ.iterrows():
+                #print(index, row)
+                scores_l.append(row['score'])
+                targets_l.append(row['target'])
+            fpr, tpr, thresholds = roc_curve(targets_l, scores_l, pos_label=1)
             fpr_list = fpr.tolist()
             tpr_list = tpr.tolist()
 
