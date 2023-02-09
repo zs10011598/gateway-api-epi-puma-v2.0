@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from sklearn.metrics import roc_curve
+from sklearn.metrics import roc_curve, auc
 from ..utils.dge import *
 from ..utils.aggregation import *
 from ..models.occurrence import *
@@ -261,11 +261,12 @@ class GetROCCurve(APIView):
                 scores_l.append(row['score'])
                 targets_l.append(row['target'])
             fpr, tpr, thresholds = roc_curve(targets_l, scores_l, pos_label=1)
+            roc_auc = auc(fpr, tpr)
             fpr_list = fpr.tolist()
             tpr_list = tpr.tolist()
 
             #return Response({'data': df_occ.to_dict(orient='records')}, status=status.HTTP_200_OK)
-            return Response({"data_roc":[{"fpr":fpr_list},{"tpr":tpr_list}]}, status=status.HTTP_200_OK)
+            return Response({"data_roc":[{"fpr":fpr_list}, {"tpr":tpr_list}, {"auc":roc_auc}]}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
                 , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
