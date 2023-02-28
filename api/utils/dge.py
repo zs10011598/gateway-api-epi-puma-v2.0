@@ -49,6 +49,16 @@ def calculate_results_covariables(target, occurrences):
         'hipertension', 'cardiovascular', 
         'obesidad', 'renal_cronica', 
         'tabaquismo']
+
+    if target == 'NEUMONIA':
+        variables.append('uci')
+    elif target == 'INTUBADO':
+        variables.append('uci')
+        variables.append('neumonia')
+    elif target == 'FALLECIDO':
+        variables.append('uci')
+        variables.append('neumonia')
+        variables.append('intubado')
     
     dict_values = {}
     for variable in variables:
@@ -139,22 +149,71 @@ def calculate_results_cells(target, occurrences):
         'gridid_mun', 'edad', 
         'sexo', 'embarazo', 
         'diabetes', 'epoc', 
-        'asma', 'inmusupr', 
+        'asma', 'inmusupr',
         'hipertension', 'cardiovascular', 
         'obesidad', 'renal_cronica', 
         'tabaquismo']
+
+    if target == 'NEUMONIA':
+        variables.append('uci')
+    elif target == 'INTUBADO':
+        variables.append('uci')
+        variables.append('neumonia')
+    elif target == 'FALLECIDO':
+        variables.append('uci')
+        variables.append('neumonia')
+        variables.append('intubado')
 
     results_covariables = calculate_results_covariables(target, occurrences)
     df_covars = pd.DataFrame(results_covariables)
     s0 = df_covars.iloc[0]['s0']
     results_covariables = None
     for occ in occurrences:
-        score = 0
+        score = s0
+        score_uci = s0
+        score_neumonia = s0
+        score_uci_neumonia = s0
+        score_intubado = s0 
+        score_uci_intubado = s0
+        score_neumonia_intubado = s0
+        score_uci_neumonia_intubado = s0
         occ['edad'] = map_age_group(occ['edad'])
-        occ['score'] = s0
         for variable in variables:
-            score += df_covars[(df_covars['variable'] == variable) & (df_covars['value'] == occ[variable])]['score'].iloc[0]
+            current_score = df_covars[(df_covars['variable'] == variable) &\
+                (df_covars['value'] == occ[variable])]['score'].iloc[0]
+            score += current_score
+            if target == 'NEUMONIA' and variable != 'uci':
+                score_uci += current_score
+            if target == 'INTUBADO':
+                if variable != 'uci':
+                    score_uci += current_score
+                if variable != 'neumonia':
+                    score_neumonia += current_score
+                if variable != 'uci' and variable != 'neumonia':
+                    score_uci_neumonia += current_score
+            if target == 'FALLECIDO':
+                if variable != 'uci':
+                    score_uci += current_score
+                if variable != 'neumonia':
+                    score_neumonia += current_score
+                if variable != 'intubado':
+                    score_intubado += current_score
+                if variable != 'uci' and variable != 'neumonia':
+                    score_uci_neumonia += current_score
+                if variable != 'uci' and variable != 'intubado':
+                    score_uci_intubado += current_score
+                if variable != 'neumonia' and variable != 'intubado':
+                    score_neumonia_intubado += current_score
+                if variable != 'uci' and variable != 'neumonia' and variable != 'intubado':
+                    score_uci_neumonia_intubado += current_score
         occ['score'] = score
+        occ['score_h'] = score_uci
+        occ['score_n'] = score_neumonia
+        occ['score_i'] = score_intubado
+        occ['score_hn'] = score_uci_neumonia
+        occ['score_hi'] = score_uci_intubado
+        occ['score_ni'] = score_neumonia_intubado
+        occ['score_hni'] = score_uci_neumonia_intubado
     return occurrences
 
 

@@ -118,6 +118,17 @@ class GetHistoricalProfile(APIView):
             'INTUBADO': 'intubado'}
         try:
             data = request.data
+
+            if data['target'] == 'NEUMONIA':
+                covariables.append('uci')
+            elif data['target'] == 'INTUBADO':
+                covariables.append('uci')
+                covariables.append('neumonia')
+            elif data['target'] == 'FALLECIDO':
+                covariables.append('uci')
+                covariables.append('neumonia')
+                covariables.append('intubado')
+
             reports = os.listdir('./reports/')
             reports_cov = [r for r in reports if r.startswith('dge-') and data['target'] in r and 'covariables' in r]
             reports_cov.sort()
