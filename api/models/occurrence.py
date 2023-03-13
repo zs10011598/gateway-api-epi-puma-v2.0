@@ -57,6 +57,7 @@ class OccurrenceCOVID19(models.Model):
     tabaquismo = models.CharField(max_length=10)
     uci = models.CharField(max_length=15)
     intubado = models.CharField(max_length=15)
+    tipo_paciente = models.CharField(max_length=20)
 
     class Meta:
         managed = False

@@ -19,10 +19,11 @@ def calculate_results_covariables(target, occurrences):
         'HOSPITALIZADO', 'NEUMONIA', 'INTUBADO', 'FALLECIDO'
     """
     results_covariables = []
-    target_column_map = {'HOSPITALIZADO': 'uci', 'NEUMONIA': 'neumonia', 'INTUBADO': 'intubado'}
+    target_column_map = {'HOSPITALIZADO': 'hospitalizado', 'NEUMONIA': 'neumonia', 'INTUBADO': 'intubado'}
     
     df_train = pd.DataFrame(occurrences)
     occurrences = None
+    df_train = df_train.rename(columns={'tipo_paciente': 'hospitalizado'})
     df_train = df_train.drop(columns=['gridid_state', 'gridid_ageb', 'date_occurrence'])
     df_train['edad'] = df_train['edad'].apply(lambda x: map_age_group(x))
     dict_results = {
@@ -52,12 +53,12 @@ def calculate_results_covariables(target, occurrences):
         'tabaquismo']
 
     if target == 'NEUMONIA':
-        variables.append('uci')
+        variables.append('hospitalizado')
     elif target == 'INTUBADO':
-        variables.append('uci')
+        variables.append('hospitalizado')
         variables.append('neumonia')
     elif target == 'FALLECIDO':
-        variables.append('uci')
+        variables.append('hospitalizado')
         variables.append('neumonia')
         variables.append('intubado')
     
@@ -65,6 +66,8 @@ def calculate_results_covariables(target, occurrences):
     for variable in variables:
         variable_row = df_train[variable].unique().tolist()
         dict_values[variable] = variable_row
+
+    #print(dict_values)
     
     N = df_train.shape[0]
     target_column = None
@@ -72,22 +75,34 @@ def calculate_results_covariables(target, occurrences):
     #print(df_train['fecha_def'].unique())
     if target == 'FALLECIDO':
         Nc = df_train[df_train['fecha_def']!='9999-99-99'].shape[0]
+    elif target == 'HOSPITALIZADO':
+        target_column = target_column_map[target]
+        Nc = df_train[df_train[target_column]=='HOSPITALIZADO'].shape[0]
     else:
         target_column = target_column_map[target]
         Nc = df_train[df_train[target_column]=='SI'].shape[0]
 
     #print('Nc = ', Nc)
     
-    alpha = 0.00000005
+    #alpha = 0.00000005
+    alpha = 0.0005
 
     for variable in variables:
+
         values = dict_values[variable]
-        #print(values)
+        
+        #print(variable, values)
+        
         for value in values:
+            filter_variable = variable
+            filter_value = value
+            
             if target == 'FALLECIDO':
-                Ncx = df_train[(df_train[variable]==value) & (df_train['fecha_def']!='9999-99-99')].shape[0]
+                Ncx = df_train[(df_train[filter_variable]==filter_value) & (df_train['fecha_def']!='9999-99-99')].shape[0]
+            elif target == 'HOSPITALIZADO':
+                Ncx = df_train[(df_train[filter_variable]==filter_value) & (df_train[target_column]=='HOSPITALIZADO')].shape[0]
             else:
-                Ncx = df_train[(df_train[variable]==value) & (df_train[target_column]=='SI')].shape[0]
+                Ncx = df_train[(df_train[filter_variable]==filter_value) & (df_train[target_column]=='SI')].shape[0]
             
             Nx = df_train[df_train[variable]==value].shape[0]
             
@@ -100,8 +115,8 @@ def calculate_results_covariables(target, occurrences):
             try:
                 s0 = np.log(PC/P_C)
                 epsilon = (Nx*(PCX - PC)) / ((Nx*PC*(1 - PC))**0.5)
-                score = np.log((Ncx/Nc + alpha)/(Nc_x/Nc_ + 2*alpha))
-                #score = np.log(((Ncx + 0.005)/(Nc + 0.01))/((Nc_x + 0.01)/(Nc_+0.005)))
+                #score = np.log((Ncx/Nc + alpha)/(Nc_x/Nc_ + 2*alpha))
+                score = np.log(((Ncx + alpha)/(Nc + 2*alpha))/((Nc_x + alpha)/(Nc_+ 2*alpha)))
             except Exception as e:
                 #print(str(e))
                 s0 = 0
@@ -109,7 +124,10 @@ def calculate_results_covariables(target, occurrences):
                 score = 0
             
             if np.sign(epsilon) != np.sign(score):
-                print(N, Nc, Ncx, Nx, epsilon, score, variable, value)
+                if variable != 'gridid_mun':
+                    print('IIIIIIIII->', N, Nc, Ncx, Nx, epsilon, score, variable, value)
+                else:
+                    print(N, Nc, Ncx, Nx, epsilon, score, variable, value)
 
             results_covariables.append({
                 'variable': variable,
@@ -165,65 +183,73 @@ def calculate_results_cells(target, occurrences):
         'tabaquismo']
 
     if target == 'NEUMONIA':
-        variables.append('uci')
+        variables.append('hospitalizado')
     elif target == 'INTUBADO':
-        variables.append('uci')
+        variables.append('hospitalizado')
         variables.append('neumonia')
     elif target == 'FALLECIDO':
-        variables.append('uci')
+        variables.append('hospitalizado')
         variables.append('neumonia')
         variables.append('intubado')
 
     results_covariables = calculate_results_covariables(target, occurrences)
     df_covars = pd.DataFrame(results_covariables)
+    #print(df_covars.columns)
     s0 = df_covars.iloc[0]['s0']
     results_covariables = None
+    
     for occ in occurrences:
+        
         score = s0
-        score_uci = s0
+        score_hospitalizado = s0
         score_neumonia = s0
-        score_uci_neumonia = s0
+        score_hospitalizado_neumonia = s0
         score_intubado = s0 
-        score_uci_intubado = s0
+        score_hospitalizado_intubado = s0
         score_neumonia_intubado = s0
-        score_uci_neumonia_intubado = s0
+        score_hospitalizado_neumonia_intubado = s0
         occ['edad'] = map_age_group(occ['edad'])
+        
         for variable in variables:
+            
             current_score = df_covars[(df_covars['variable'] == variable) &\
-                (df_covars['value'] == occ[variable])]['score'].iloc[0]
+                (df_covars['value'] == occ[variable if variable != 'hospitalizado' else 'tipo_paciente'])] \
+                ['score'].iloc[0]
+
             score += current_score
-            if target == 'NEUMONIA' and variable != 'uci':
-                score_uci += current_score
+            if target == 'NEUMONIA' and variable != 'hospitalizado':
+                score_hospitalizado += current_score
             if target == 'INTUBADO':
-                if variable != 'uci':
-                    score_uci += current_score
+                if variable != 'hospitalizado':
+                    score_hospitalizado += current_score
                 if variable != 'neumonia':
                     score_neumonia += current_score
-                if variable != 'uci' and variable != 'neumonia':
-                    score_uci_neumonia += current_score
+                if variable != 'hospitalizado' and variable != 'neumonia':
+                    score_hospitalizado_neumonia += current_score
             if target == 'FALLECIDO':
-                if variable != 'uci':
-                    score_uci += current_score
+                if variable != 'hospitalizado':
+                    score_hospitalizado += current_score
                 if variable != 'neumonia':
                     score_neumonia += current_score
                 if variable != 'intubado':
                     score_intubado += current_score
-                if variable != 'uci' and variable != 'neumonia':
-                    score_uci_neumonia += current_score
-                if variable != 'uci' and variable != 'intubado':
-                    score_uci_intubado += current_score
+                if variable != 'hospitalizado' and variable != 'neumonia':
+                    score_hospitalizado_neumonia += current_score
+                if variable != 'hospitalizado' and variable != 'intubado':
+                    score_hospitalizado_intubado += current_score
                 if variable != 'neumonia' and variable != 'intubado':
                     score_neumonia_intubado += current_score
-                if variable != 'uci' and variable != 'neumonia' and variable != 'intubado':
-                    score_uci_neumonia_intubado += current_score
+                if variable != 'hospitalizado' and variable != 'neumonia' and variable != 'intubado':
+                    score_hospitalizado_neumonia_intubado += current_score
+        
         occ['score'] = score
-        occ['score_h'] = score_uci
+        occ['score_h'] = score_hospitalizado
         occ['score_n'] = score_neumonia
         occ['score_i'] = score_intubado
-        occ['score_hn'] = score_uci_neumonia
-        occ['score_hi'] = score_uci_intubado
+        occ['score_hn'] = score_hospitalizado_neumonia
+        occ['score_hi'] = score_hospitalizado_intubado
         occ['score_ni'] = score_neumonia_intubado
-        occ['score_hni'] = score_uci_neumonia_intubado
+        occ['score_hni'] = score_hospitalizado_neumonia_intubado
     return occurrences
 
 

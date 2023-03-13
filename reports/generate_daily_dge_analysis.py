@@ -8,7 +8,9 @@ import os
 
 
 
-target_clases = ['HOSPITALIZADO', 'NEUMONIA', 'INTUBADO', 'FALLECIDO']
+target_clases = [
+#'HOSPITALIZADO', 'NEUMONIA', 'INTUBADO', 
+'FALLECIDO']
 
 #url = 'https://covid19.c3.unam.mx/gateway/api/analysis-population/time-validation-dge/'
 body = json.loads("""
@@ -35,6 +37,7 @@ while initial_date < today:
 		body['target'] = target
 		body['initial_date'] = initial_date.strftime('%Y-%m-%d')
 		
+		"""
 		if 'dge-covariables-{0}-{1}-{2}.csv'.format(target, initial_date.strftime('%Y-%m-%d'), period) in os.listdir('./'):
 			pass
 		else:
@@ -71,7 +74,6 @@ while initial_date < today:
 			df.to_csv('./dge-occurrences-{0}-{1}-{2}.csv'.format(target, initial_date.strftime('%Y-%m-%d'), period), index=False)
 		except Exception as e:
 			print(str(e))
-		"""
 
 	
 	initial_date += delta_period
