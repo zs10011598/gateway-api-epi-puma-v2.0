@@ -100,6 +100,7 @@ class Cells(APIView):
             return Response({'occurences': results_cells}, status=status.HTTP_200_OK)
         
         except Exception as e:
+            print(str(e))
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
                 , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
