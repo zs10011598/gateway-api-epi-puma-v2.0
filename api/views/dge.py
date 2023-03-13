@@ -116,19 +116,19 @@ class GetHistoricalProfile(APIView):
             'obesidad', 'renal_cronica', \
             'tabaquismo']
         target_column_map = {\
-            'HOSPITALIZADO': 'uci', \
+            'HOSPITALIZADO': 'hospitalizado', \
             'NEUMONIA': 'neumonia', \
             'INTUBADO': 'intubado'}
         try:
             data = request.data
 
             if data['target'] == 'NEUMONIA':
-                covariables.append('uci')
+                covariables.append('hospitalizado')
             elif data['target'] == 'INTUBADO':
-                covariables.append('uci')
+                covariables.append('hospitalizado')
                 covariables.append('neumonia')
             elif data['target'] == 'FALLECIDO':
-                covariables.append('uci')
+                covariables.append('hospitalizado')
                 covariables.append('neumonia')
                 covariables.append('intubado')
 
@@ -142,8 +142,8 @@ class GetHistoricalProfile(APIView):
             reports = None
             periods = {}
             for rcov in reports_cov:
-                score_total = 0
                 df = pd.read_csv('./reports/{0}'.format(rcov))
+                score_total = df.iloc[0]['s0']
                 #print(df)
                 date = rcov.split(data['target']+'-')[1].split('.csv')[0][:-3]
                 periods[date] = {}
@@ -163,6 +163,7 @@ class GetHistoricalProfile(APIView):
                         periods[date][covariable] = {'value': data[covariable], 'score': score, 'epsilon': epsilon, 'PCX': pcx}                    
                     except Exception as e:
                         print(str(e))
+                
                 periods[date]['profile_score'] = score_total
 
             df = None
@@ -182,13 +183,14 @@ class GetHistoricalProfile(APIView):
                     periods[date]['bin-{0}'.format(20-i)]['min_score'] = min_score
 
                     Nc = 0
-                    df_train = df[lim_inf:lim_sup+1]
-                    if data['target'] == 'CONFIRMADO' or data['target'] == 'FALLECIDO':
-                        Nc = df_train[df_train['variable_id'].isin([5, 2, 3, 7])].shape[0]
+                    df_train = df.iloc[lim_inf:lim_sup+1]
+                    #print(df_train['fecha_def'].unique())
+                    if data['target'] == 'FALLECIDO':
+                        Nc = df_train[df_train['fecha_def']!='9999-99-99'].shape[0]
                     else:
                         target_column = target_column_map[data['target']]
-                        Nc = df_train[(df_train['variable_id'].isin([5, 2, 3, 7])) & (df_train[target_column]=='SI')]\
-                            .shape[0]
+                        Nc = df_train[df_train[target_column]=='SI' if target_column != 'hospitalizado' else 'HOSPITALIZADO'].shape[0]
+                    
                     probability = Nc/float(percentile_length)
                     periods[date]['bin-{0}'.format(20-i)]['probability'] = probability
 
