@@ -52,7 +52,7 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
         for gridid in demographic_group_dict.keys():
             N += demographic_group_dict[gridid]
 
-        #print(demographic_group_dict)
+        ##print(demographic_group_dict)
 
     else:
         N = CellState.objects.aggregate(Sum('pobtot'))['pobtot__sum']
@@ -70,7 +70,7 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
 
 
     target_filter = mesh_occurrence_condition(mesh, target_filter)
-    #print(mesh, target_filter)
+    ##print(mesh, target_filter)
 
     if target == 'VACUNADO':
         target_by_cell = OccurrenceVaccines.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
@@ -109,7 +109,7 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
                 First type of analysis, static covariables
             """
             covars = VariableINEGI2020.objects.all().using(db)
-            #print(covars)
+            ##print(covars)
 
         if db == 'irag':
             """
@@ -131,7 +131,7 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
                 else:
                     covars_to_dicretize = VariableIRAG.objects.all().using('irag')
 
-                #print('No. covars ' + str(covars_to_dicretize.count()))
+                ##print('No. covars ' + str(covars_to_dicretize.count()))
 
                 delta_months = dt.timedelta(days = -backward_period*30)
 
@@ -141,7 +141,7 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
                 lim_sup_training_bp = lim_sup_training_bp.strftime("%Y-%m-%d")
                 lim_inf_training_bp = lim_inf_training_bp.strftime("%Y-%m-%d")
                 
-                #print('HISTORICAL DYNAMICAL VARIABLES PERIOD ' + str(backward_period) + ' DE ' + lim_inf_training_bp + ' A ' + lim_sup_training_bp)
+                ##print('HISTORICAL DYNAMICAL VARIABLES PERIOD ' + str(backward_period) + ' DE ' + lim_inf_training_bp + ' A ' + lim_sup_training_bp)
 
                 ## Filtering occs by date and name
                 if db in covariable_filter.keys():
@@ -255,7 +255,7 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
                     covars += derivatives_covars
 
 
-                    #print(covars)
+                    ##print(covars)
 
                 else:
                     covars = []
@@ -272,7 +272,7 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
             dict_results['node'].append(db)
 
             ## id
-            print(covar)
+            #print(covar)
             dict_results['id'].append(covar.id)            
 
             ## variable
@@ -280,19 +280,19 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
                 dict_results['variable'].append(VariableINEGI2020Serializer(covar).data)
 
             if db == 'irag':
-                #print(covar)
+                ##print(covar)
                 dict_results['variable'].append(VariableSerializer(covar).data)
-                #print(VariableSerializer(covar).data)
+                ##print(VariableSerializer(covar).data)
 
             if db == 'covid19':
-                print(covar)
+                #print(covar)
                 dict_results['variable'].append(VariableSerializer(covar).data)
 
             ## Nx && Ncx
             Nx = 0
             Ncx = 0
             cells_presence = getattr(covar, 'cells_' + mesh)
-            #print('COVAR => ', covar.name, '; bin => ', covar.bin, '; no. cells: ', len(cells_presence))
+            ##print('COVAR => ', covar.name, '; bin => ', covar.bin, '; no. cells: ', len(cells_presence))
 
             for gridid in cells_presence:
                 Nx += map_cells_pobtot[gridid] if gridid in map_cells_pobtot.keys() else 0
@@ -315,8 +315,8 @@ def calculate_epsilon(dbs=['inegi2020'], covariable_filter={}, target_filter={'v
             dict_results['Nc'].append(Nc)
             dict_results['N'].append(N)
 
-            #print('Nx => ', Nx)
-            #print('PC => ', PC)
+            ##print('Nx => ', Nx)
+            ##print('PC => ', PC)
 
             ## epsilon
             if Nx == 0 or PC == 0:
@@ -390,7 +390,7 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
 
     if lim_inf_first != None and lim_sup_first != None:
         target_filter_first = get_target_filter(mesh, lim_inf_first, lim_sup_first, target, attribute_filter)
-        print(target_filter_first)
+        #print(target_filter_first)
 
         if target == 'VACUNADO':
             target_first = OccurrenceCOVID19.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter_first).annotate(tcount=Count('id'))
@@ -430,7 +430,7 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
     cells = get_mesh(mesh)
     percentiles = 20
 
-    #print(df_epsilon.head(50))
+    ##print(df_epsilon.head(50))
 
     if target == 'VACUNADO':
         target_training = OccurrenceCOVID19.objects.using('vaccines').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
@@ -488,7 +488,7 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
                 else:
                     covars_to_dicretize = VariableIRAG.objects.all().using('irag')
 
-                #print('No. covars ' + str(len(covars)))
+                ##print('No. covars ' + str(len(covars)))
 
                 delta_months = dt.timedelta(days = -backward_period*30)
 
@@ -498,7 +498,7 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
                 lim_sup_training_bp = lim_sup_training_bp.strftime("%Y-%m-%d")
                 lim_inf_training_bp = lim_inf_training_bp.strftime("%Y-%m-%d")
                 
-                #print('HISTORICAL DYNAMICAL VARIABLES PERIOD ' + str(backward_period) + ' DE ' + lim_inf_training_bp + ' A ' + lim_sup_training_bp)
+                ##print('HISTORICAL DYNAMICAL VARIABLES PERIOD ' + str(backward_period) + ' DE ' + lim_inf_training_bp + ' A ' + lim_sup_training_bp)
 
                 ## Filtering occs by date and name
                 if db in covariable_filter.keys():
@@ -630,7 +630,8 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
                 if gridid in map_cell_score.keys():
                     map_cell_score[gridid]['score_training'] += current_score
                     if gridid == '15121':
-                        print(current_score, covar.id, covar.name, map_cell_score[gridid]['score_training'])
+                        pass
+                        #print(current_score, covar.id, covar.name, map_cell_score[gridid]['score_training'])
 
                 if map_target_first != None and gridid in map_target_first.keys():
                     map_cell_score[gridid]['score_first'] += current_score_first                    
@@ -676,7 +677,7 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
             p_first += [cases_percentil_first/pobtot_percentil_first for i in range(upper_first - lower_first)]
             percentil_first += [percentiles - d for i in range(upper_first - lower_first)]
 
-        #print(len(p), len(percentil))
+        ##print(len(p), len(percentil))
         df_cells['p_first'] = pd.Series(p_first)
         df_cells['percentil_first'] = pd.Series(percentil_first)
 
@@ -710,7 +711,7 @@ def calculate_score(dbs=['inegi2020'], covariable_filter={}, mesh='mun', target=
         p_training += [cases_percentil_training/pobtot_percentil_training for i in range(upper_training - lower_training)]
         percentil_training += [percentiles - d for i in range(upper_training - lower_training)]
 
-    #print(len(p), len(percentil))
+    ##print(len(p), len(percentil))
     df_cells['p_training'] = pd.Series(p_training)
     df_cells['percentil_training'] = pd.Series(percentil_training)
 
@@ -853,7 +854,7 @@ def calculate_epsilon_dge(target_filter={'variable_id__in': [2, 3], 'date_occurr
             map_cells_pobtot[gridid] = demographic_group_dict[gridid]
         else:
             map_cells_pobtot[gridid] = 0
-    #print(map_cells_pobtot)
+    ##print(map_cells_pobtot)
     target_filter = mesh_occurrence_condition(mesh, target_filter)
 
     target_by_cell = OccurrenceCOVID19.objects.using('covid19').\
@@ -960,9 +961,9 @@ def calculate_score_dge(mesh='mun', target='CONFIRMADO', lim_inf_training='2020-
 
     if lim_inf_first != None and lim_sup_first != None:
         target_filter_first = get_target_filter(mesh, lim_inf_first, lim_sup_first, target, attribute_filter)
-        #print(target_filter_first)
+        ##print(target_filter_first)
         target_first = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter_first).annotate(tcount=Count('id'))
-        #print(target_first)
+        ##print(target_first)
         if target_first.count() == 0:
             return None
         map_target_first = make_map(target_first, 'gridid_' + mesh, 'tcount')
@@ -986,7 +987,7 @@ def calculate_score_dge(mesh='mun', target='CONFIRMADO', lim_inf_training='2020-
     df_epsilon = pd.DataFrame(epsilon)
     percentiles = 20
     target_training = OccurrenceCOVID19.objects.using('covid19').values('gridid_' + mesh).filter(**target_filter).annotate(tcount=Count('id'))
-    #print(target_training)
+    ##print(target_training)
     if target_training.count() == 0:
         return None
     map_target_training = make_map(target_training, 'gridid_' + mesh, 'tcount')
@@ -1070,10 +1071,10 @@ def calculate_score_dge(mesh='mun', target='CONFIRMADO', lim_inf_training='2020-
 
             while cummulated_length >= N and upper_first < df_cells.shape[0]: 
                 upper_first += 1
-                print('-->', lower_first, upper_first)
+                #print('-->', lower_first, upper_first)
             aux_first = upper_first
 
-            print(d, lower_first, aux_first)
+            #print(d, lower_first, aux_first)
             cases_percentil_first = df_cells.iloc[lower_first:upper_first].cases_first.sum()
             if demographic_group != None:
                 pobtot_percentil_first = df_cells.iloc[lower_first:upper_first][demographic_group].sum()
@@ -1084,9 +1085,9 @@ def calculate_score_dge(mesh='mun', target='CONFIRMADO', lim_inf_training='2020-
         df_cells['p_first'] = pd.Series(p_first)
         df_cells['percentil_first'] = pd.Series(percentil_first)
 
-    print(len(p_first))
-    print(len(percentil_first))
-    print(df_cells.shape)
+    #print(len(p_first))
+    #print(len(percentil_first))
+    #print(df_cells.shape)
 
     df_cells = df_cells.sort_values('score_training', ascending=False)
     df_cells = df_cells.reset_index(drop=True)
@@ -1118,7 +1119,7 @@ def calculate_score_dge(mesh='mun', target='CONFIRMADO', lim_inf_training='2020-
         p_training += [cases_percentil_training/pobtot_percentil_training for i in range(upper_training - lower_training)]
         percentil_training += [percentiles - d for i in range(upper_training - lower_training)]
 
-    #print(len(p), len(percentil))
+    ##print(len(p), len(percentil))
     df_cells['p_training'] = pd.Series(p_training)
     df_cells['percentil_training'] = pd.Series(percentil_training)
 
