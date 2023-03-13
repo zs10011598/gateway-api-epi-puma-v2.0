@@ -130,10 +130,8 @@ dmypy.json
 
 
 env.sh
-tests/
+
 *swp
 test_request*
-
-reports/
 
 covar_cells/

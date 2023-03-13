@@ -218,6 +218,7 @@ class CellsTimeValidation(APIView):
                                     lim_inf_first, lim_sup_first, 
                                     lim_inf_validation, lim_sup_validation, demographic_group,
                                     attribute_filter, covariable_modifier, epsilon_threshold) 
+        #print(response)
 
         return Response({'data': response}, status=status.HTTP_200_OK)
 

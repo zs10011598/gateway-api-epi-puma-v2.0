@@ -48,12 +48,14 @@ class Covariables(APIView):
             occurrences = OccurrenceCOVID19.objects.using('covid19').\
                 filter(**target_attributes).values()
             
-            print('# Occs: ' + str(occurrences.count()))
+            print(target_attributes)
+            #print('# Occs: ' + str(occurrences.count()))
 
             results_covariables = calculate_results_covariables(target, occurrences)
             return Response({'covariables': results_covariables}, status=status.HTTP_200_OK)
         
         except Exception as e:
+            print(str(e))
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
                 , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

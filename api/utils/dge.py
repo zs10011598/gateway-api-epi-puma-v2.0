@@ -10,6 +10,7 @@ import pandas as pd
 from ..serializers.cell import *
 from sklearn.linear_model import LinearRegression
 import datetime as dt
+import numpy as np
 
 
 def calculate_results_covariables(target, occurrences):
@@ -22,7 +23,7 @@ def calculate_results_covariables(target, occurrences):
     
     df_train = pd.DataFrame(occurrences)
     occurrences = None
-    df_train = df_train.drop(columns=['gridid_state', 'gridid_ageb', 'date_occurrence', 'fecha_def'])
+    df_train = df_train.drop(columns=['gridid_state', 'gridid_ageb', 'date_occurrence'])
     df_train['edad'] = df_train['edad'].apply(lambda x: map_age_group(x))
     dict_results = {
         'variable': [], 
@@ -67,25 +68,29 @@ def calculate_results_covariables(target, occurrences):
     
     N = df_train.shape[0]
     target_column = None
-    if target == 'CONFIRMADO' or target == 'FALLECIDO':
-        Nc = df_train[df_train['variable_id'].isin([5, 2, 3, 7])].shape[0]
+
+    #print(df_train['fecha_def'].unique())
+    if target == 'FALLECIDO':
+        Nc = df_train[df_train['fecha_def']!='9999-99-99'].shape[0]
     else:
         target_column = target_column_map[target]
-        Nc = df_train[(df_train['variable_id'].isin([5, 2, 3, 7])) & (df_train[target_column]=='SI')]\
-            .shape[0]
-    alpha = 0.01
+        Nc = df_train[df_train[target_column]=='SI'].shape[0]
+
+    #print('Nc = ', Nc)
+    
+    alpha = 0.00000005
 
     for variable in variables:
         values = dict_values[variable]
-        
+        #print(values)
         for value in values:
-            if target == 'CONFIRMADO' or target == 'FALLECIDO':
-                Ncx = df_train[(df_train[variable]==value) & (df_train['variable_id'].isin([5, 2, 3, 7]))]\
-                    [variable].count()
+            if target == 'FALLECIDO':
+                Ncx = df_train[(df_train[variable]==value) & (df_train['fecha_def']!='9999-99-99')].shape[0]
             else:
-                Ncx = df_train[(df_train[variable]==value) & (df_train['variable_id'].isin([5, 2, 3, 7])) \
-                    & (df_train[target_column]=='SI')][variable].count()
-            Nx = df_train[df_train[variable]==value][variable].count()
+                Ncx = df_train[(df_train[variable]==value) & (df_train[target_column]=='SI')].shape[0]
+            
+            Nx = df_train[df_train[variable]==value].shape[0]
+            
             Nc_x = Nx - Ncx
             PCX = Ncx/Nx
             Nc_ = N - Nc
@@ -94,13 +99,18 @@ def calculate_results_covariables(target, occurrences):
             PC = Nc/N
             try:
                 s0 = np.log(PC/P_C)
-                epsilon = (Nx*(PCX - PC))/ ((Nx*PC*(1 - PC))**0.5)
+                epsilon = (Nx*(PCX - PC)) / ((Nx*PC*(1 - PC))**0.5)
                 score = np.log((Ncx/Nc + alpha)/(Nc_x/Nc_ + 2*alpha))
+                #score = np.log(((Ncx + 0.005)/(Nc + 0.01))/((Nc_x + 0.01)/(Nc_+0.005)))
             except Exception as e:
-                print(str(e))
+                #print(str(e))
                 s0 = 0
                 epsilon = 0
                 score = 0
+            
+            if np.sign(epsilon) != np.sign(score):
+                print(N, Nc, Ncx, Nx, epsilon, score, variable, value)
+
             results_covariables.append({
                 'variable': variable,
                 'value': value,
