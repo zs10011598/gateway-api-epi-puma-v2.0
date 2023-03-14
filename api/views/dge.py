@@ -177,7 +177,7 @@ class GetHistoricalProfile(APIView):
                             periods[date][covariable]['value'] = 'NO'
 
                     except Exception as e:
-                        print(covariable, str(e))
+                        print('error cov ', covariable, str(e))
                 
                 periods[date]['profile_score'] = score_total
 
@@ -202,7 +202,7 @@ class GetHistoricalProfile(APIView):
                     #print(df_train['fecha_def'].unique())
                     if data['target'] == 'FALLECIDO':
                         Nc = df_train[df_train['fecha_def']!='9999-99-99'].shape[0]
-                    else:
+                    elif data['target'] != 'HOSPITALIZADO':
                         target_column = target_column_map[data['target']]
                         Nc = df_train[df_train[target_column]=='SI' if target_column != 'hospitalizado' else 'HOSPITALIZADO'].shape[0]
                     
@@ -216,6 +216,7 @@ class GetHistoricalProfile(APIView):
 
             return Response({'data': periods}, status=status.HTTP_200_OK)
         except Exception as e:
+            print(str(e))
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
                 , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
