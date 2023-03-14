@@ -157,17 +157,25 @@ class GetHistoricalProfile(APIView):
                 for covariable in covariables:
                     #print(covariable)
                     try:
+                        
                         if covariable == 'hospitalizado' and data[covariable] == 'SI':
                             data[covariable] = 'HOSPITALIZADO'
                         elif covariable == 'hospitalizado' and data[covariable] == 'NO':
                             data[covariable] = 'AMBULATORIO'
+                        if covariable == 'intubado' and data[covariable] == 'NO':
+                            data[covariable] = 'NO APLICA'
+
                         score = df[(df['variable'] == covariable) & (df['value'] == data[covariable])].iloc[0]['score']
                         epsilon = df[(df['variable'] == covariable) & (df['value'] == data[covariable])].iloc[0]['epsilon']
                         pcx = df[(df['variable'] == covariable) & (df['value'] == data[covariable])].iloc[0]['PCX']
                         score_total += score
                         periods[date][covariable] = {'value': data[covariable], 'score': score, 'epsilon': epsilon, 'PCX': pcx}
+                        
                         if covariable == 'hospitalizado':
                             periods[date][covariable]['value'] = 'SI' if periods[date][covariable]['value'] == 'HOSPITALIZADO' else 'NO'
+                        if covariable == 'intubado' and data[covariable] == 'NO APLICA':
+                            periods[date][covariable]['value'] = 'NO'
+
                     except Exception as e:
                         print(covariable, str(e))
                 
