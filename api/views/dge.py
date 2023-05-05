@@ -132,11 +132,18 @@ class GetHistoricalProfile(APIView):
                 covariables.append('neumonia')
                 covariables.append('intubado')
 
+            initial_date = None
+            if 'initial_date' in data.keys() and data['initial_date'] != None:
+                initial_date = data['initial_date']
+            else:
+                return Response({"message": "`initial_date` parameter not found"},\
+                    status=status.HTTP_400_BAD_REQUEST)
+
             reports = os.listdir('./reports/')
-            reports_cov = [r for r in reports if r.startswith('dge-') and data['target'] in r and 'covariables' in r]
+            reports_cov = [r for r in reports if r.startswith('dge-') and data['target'] in r and 'covariables' in r and r <= 'dge-covariables-' + data['target'] + '-' + initial_date + '.csv']
             reports_cov.sort()
             reports_cov = reports_cov[-5:] 
-            reports_occ = [r for r in reports if r.startswith('dge-') and data['target'] in r and 'occurrences' in r]
+            reports_occ = [r for r in reports if r.startswith('dge-') and data['target'] in r and 'occurrences' in r and r <= 'dge-occurrences-' + data['target'] + '-' + initial_date + '.csv']
             reports_occ.sort()
             reports_occ = reports_occ[-5:]
             reports = None
