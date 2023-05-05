@@ -67,42 +67,37 @@ class Cells(APIView):
         initial_date = None
         period = None
 
-        try:
-            if 'target' in request.data.keys():
-                target = request.data['target']
-            else:
-                return Response({"message": "`target` parameter not found"},\
-                    status=status.HTTP_400_BAD_REQUEST)
-
-            if 'initial_date' in request.data.keys():
-                initial_date = request.data['initial_date']
-            else:
-                return Response({"message": "`initial_date` parameter not found"},\
-                    status=status.HTTP_400_BAD_REQUEST)
-
-            if 'period' in request.data.keys():
-                period = request.data['period']
-            else:
-                return Response({"message": "`period` parameter not found"},\
-                    status=status.HTTP_400_BAD_REQUEST)
-
-            target_attributes = {}
-            delta_period = dt.timedelta(days = period)
-            final_date = dt.datetime.strptime(initial_date, '%Y-%m-%d') + delta_period
-            target_attributes['date_occurrence__gte'] = initial_date
-            target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
-            target_attributes['variable_id__in'] = [5, 2, 3, 7]
-            
-            occurrences = OccurrenceCOVID19.objects.using('covid19').\
-                filter(**target_attributes).values()
-
-            results_cells = calculate_results_cells(target, occurrences)
-            return Response({'occurences': results_cells}, status=status.HTTP_200_OK)
         
-        except Exception as e:
-            print(str(e))
-            return Response({'message': 'something was wrong: {0}'.format(str(e))}\
-                , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if 'target' in request.data.keys():
+            target = request.data['target']
+        else:
+            return Response({"message": "`target` parameter not found"},\
+                status=status.HTTP_400_BAD_REQUEST)
+
+        if 'initial_date' in request.data.keys():
+            initial_date = request.data['initial_date']
+        else:
+            return Response({"message": "`initial_date` parameter not found"},\
+                status=status.HTTP_400_BAD_REQUEST)
+
+        if 'period' in request.data.keys():
+            period = request.data['period']
+        else:
+            return Response({"message": "`period` parameter not found"},\
+                status=status.HTTP_400_BAD_REQUEST)
+
+        target_attributes = {}
+        delta_period = dt.timedelta(days = period)
+        final_date = dt.datetime.strptime(initial_date, '%Y-%m-%d') + delta_period
+        target_attributes['date_occurrence__gte'] = initial_date
+        target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
+        target_attributes['variable_id__in'] = [5, 2, 3, 7]
+        
+        occurrences = OccurrenceCOVID19.objects.using('covid19').\
+            filter(**target_attributes).values()
+
+        results_cells = calculate_results_cells(target, occurrences)
+        return Response({'occurences': results_cells}, status=status.HTTP_200_OK)
 
 
 class GetHistoricalProfile(APIView):
@@ -118,17 +113,23 @@ class GetHistoricalProfile(APIView):
         target_column_map = {\
             'HOSPITALIZADO': 'hospitalizado', \
             'NEUMONIA': 'neumonia', \
-            'INTUBADO': 'intubado'}
+            'INTUBADO': 'intubado',
+            'UCI': 'uci'}
         try:
             data = request.data
 
+            if data['target'] == 'UCI':
+                covariables.append('hospitalizado')
             if data['target'] == 'NEUMONIA':
                 covariables.append('hospitalizado')
+                covariables.append('uci')
             elif data['target'] == 'INTUBADO':
                 covariables.append('hospitalizado')
+                covariables.append('uci')
                 covariables.append('neumonia')
             elif data['target'] == 'FALLECIDO':
                 covariables.append('hospitalizado')
+                covariables.append('uci')
                 covariables.append('neumonia')
                 covariables.append('intubado')
 
@@ -285,10 +286,14 @@ class GetROCCurve(APIView):
             df_occ = pd.read_csv(report_occ)
             if target != 'CONFIRMADO' and target != 'FALLECIDO':
                 target_column_map = {\
-                    'HOSPITALIZADO': 'uci', \
+                    'HOSPITALIZADO': 'tipo_paciente', \
                     'NEUMONIA': 'neumonia', \
-                    'INTUBADO': 'intubado'}
-                df_occ = df_occ[(df_occ[target_column_map[target]]=='SI') | (df_occ[target_column_map[target]]=='NO')]
+                    'INTUBADO': 'intubado',
+                    'UCI': 'uci'}
+                if target == 'HOSPITALIZADO':
+                    df_occ = df_occ[(df_occ[target_column_map[target]]=='HOSPITALIZADO') | (df_occ[target_column_map[target]]=='AMBULATORIO')]
+                else:
+                    df_occ = df_occ[(df_occ[target_column_map[target]]=='SI') | (df_occ[target_column_map[target]]=='NO')]
             df_occ = df_occ.sort_values('score', ascending=True)
             df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
             df_occ = df_occ[['score', 'target']]

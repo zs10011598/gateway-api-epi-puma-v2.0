@@ -19,7 +19,7 @@ def calculate_results_covariables(target, occurrences):
         'HOSPITALIZADO', 'NEUMONIA', 'INTUBADO', 'FALLECIDO'
     """
     results_covariables = []
-    target_column_map = {'HOSPITALIZADO': 'hospitalizado', 'NEUMONIA': 'neumonia', 'INTUBADO': 'intubado'}
+    target_column_map = {'HOSPITALIZADO': 'hospitalizado', 'NEUMONIA': 'neumonia', 'INTUBADO': 'intubado', 'UCI': 'uci'}
     
     df_train = pd.DataFrame(occurrences)
     occurrences = None
@@ -52,12 +52,18 @@ def calculate_results_covariables(target, occurrences):
         'obesidad', 'renal_cronica', 
         'tabaquismo']
 
-    if target == 'NEUMONIA':
+
+    if target == 'UCI':
+        variables.append('hospitalizado')
+    elif target == 'NEUMONIA':
+        variables.append('uci')
         variables.append('hospitalizado')
     elif target == 'INTUBADO':
+        variables.append('uci')
         variables.append('hospitalizado')
         variables.append('neumonia')
     elif target == 'FALLECIDO':
+        variables.append('uci')
         variables.append('hospitalizado')
         variables.append('neumonia')
         variables.append('intubado')
@@ -182,13 +188,18 @@ def calculate_results_cells(target, occurrences):
         'obesidad', 'renal_cronica', 
         'tabaquismo']
 
-    if target == 'NEUMONIA':
+    if target == 'UCI':
         variables.append('hospitalizado')
+    elif target == 'NEUMONIA':
+        variables.append('hospitalizado')
+        variables.append('uci')
     elif target == 'INTUBADO':
         variables.append('hospitalizado')
+        variables.append('uci')
         variables.append('neumonia')
     elif target == 'FALLECIDO':
         variables.append('hospitalizado')
+        variables.append('uci')
         variables.append('neumonia')
         variables.append('intubado')
 
@@ -202,54 +213,109 @@ def calculate_results_cells(target, occurrences):
         
         score = s0
         score_hospitalizado = s0
+        score_uci = s0
         score_neumonia = s0
+        score_hospitalizado_uci = s0
         score_hospitalizado_neumonia = s0
-        score_intubado = s0 
+        score_uci_neumonia = s0 
+        score_hospitalizado_uci_neumonia = s0
         score_hospitalizado_intubado = s0
+        score_uci_intubado = s0
         score_neumonia_intubado = s0
+        score_intubado = s0 
         score_hospitalizado_neumonia_intubado = s0
+        score_hospitalizado_uci_intubado = s0
+        score_uci_neumonia_intubado = s0
+        score_hospitalizado_uci_neumonia_intubado = s0
+
         occ['edad'] = map_age_group(occ['edad'])
         
         for variable in variables:
             
+            #print('VARIABLE', variable, occ)
             current_score = df_covars[(df_covars['variable'] == variable) &\
                 (df_covars['value'] == occ[variable if variable != 'hospitalizado' else 'tipo_paciente'])] \
                 ['score'].iloc[0]
 
             score += current_score
-            if target == 'NEUMONIA' and variable != 'hospitalizado':
-                score_hospitalizado += current_score
+            if target == 'UCI':
+                if variable != 'hospitalizado':
+                    score_hospitalizado += current_score
+            if target == 'NEUMONIA':
+                if variable != 'hospitalizado':
+                    score_hospitalizado += current_score
+                if variable != 'uci':
+                    score_uci += current_score
+                if variable != 'hospitalizado' and variable != 'uci':
+                    score_hospitalizado_uci += current_score
             if target == 'INTUBADO':
                 if variable != 'hospitalizado':
                     score_hospitalizado += current_score
+                if variable != 'uci':
+                    score_uci += current_score
                 if variable != 'neumonia':
                     score_neumonia += current_score
+                if variable != 'hospitalizado' and variable != 'uci':
+                    score_hospitalizado_uci += current_score
                 if variable != 'hospitalizado' and variable != 'neumonia':
                     score_hospitalizado_neumonia += current_score
+                if variable != 'uci' and variable != 'neumonia':
+                    score_uci_neumonia += current_score
+                if variable != 'hospitalizado' and variable != 'uci' and variable != 'neumonia':
+                    score_hospitalizado_uci_neumonia += current_score
             if target == 'FALLECIDO':
                 if variable != 'hospitalizado':
                     score_hospitalizado += current_score
+                if variable != 'uci':
+                    score_uci += current_score
                 if variable != 'neumonia':
                     score_neumonia += current_score
                 if variable != 'intubado':
                     score_intubado += current_score
+                if variable != 'hospitalizado' and variable != 'uci':
+                    score_hospitalizado_uci += current_score
                 if variable != 'hospitalizado' and variable != 'neumonia':
                     score_hospitalizado_neumonia += current_score
                 if variable != 'hospitalizado' and variable != 'intubado':
                     score_hospitalizado_intubado += current_score
+                if variable != 'uci' and variable != 'neumonia':
+                    score_uci_neumonia += current_score
+                if variable != 'uci' and variable != 'intubado':
+                    score_uci_intubado += current_score
                 if variable != 'neumonia' and variable != 'intubado':
                     score_neumonia_intubado += current_score
+                if variable != 'hospitalizado' and variable != 'uci' and variable != 'neumonia':
+                    score_hospitalizado_uci_neumonia += current_score
+                if variable != 'hospitalizado' and variable != 'uci' and variable != 'intubado':
+                    score_hospitalizado_uci_intubado += current_score
                 if variable != 'hospitalizado' and variable != 'neumonia' and variable != 'intubado':
                     score_hospitalizado_neumonia_intubado += current_score
+                if variable != 'uci' and variable != 'neumonia' and variable != 'intubado':
+                    score_uci_neumonia_intubado += current_score
+                if variable != 'hospitalizado' and variable != 'uci' and variable != 'neumonia' and variable != 'intubado':
+                    score_hospitalizado_uci_neumonia_intubado += current_score
         
         occ['score'] = score
+
         occ['score_h'] = score_hospitalizado
+        
+        occ['score_hu'] = score_hospitalizado_uci
+        occ['score_u'] = score_uci
+
         occ['score_n'] = score_neumonia
-        occ['score_i'] = score_intubado
         occ['score_hn'] = score_hospitalizado_neumonia
+        occ['score_un'] = score_uci_neumonia
+        occ['score_hun'] = score_hospitalizado_uci_neumonia
+
+        occ['score_i'] = score_intubado
         occ['score_hi'] = score_hospitalizado_intubado
+        occ['score_ui'] = score_uci_intubado
         occ['score_ni'] = score_neumonia_intubado
+        occ['score_hui'] = score_hospitalizado_uci_intubado
         occ['score_hni'] = score_hospitalizado_neumonia_intubado
+        occ['score_uni'] = score_uci_neumonia_intubado
+        occ['score_huni'] = score_hospitalizado_uci_neumonia_intubado
+
     return occurrences
 
 
@@ -258,9 +324,10 @@ def is_target(x, target):
         Description: Decides if a record is target
     """
     target_column_map = {
-        'HOSPITALIZADO': 'uci', 
+        'HOSPITALIZADO': 'tipo_paciente', 
         'NEUMONIA': 'neumonia', 
-        'INTUBADO': 'intubado'}
+        'INTUBADO': 'intubado',
+        'UCI': 'uci'}
 
     if target == 'CONFIRMADO':
         if x['variable_id'] in [5, 2, 3, 7]:
@@ -269,6 +336,11 @@ def is_target(x, target):
             return 0 
     elif target == 'FALLECIDO':
         if x['variable_id'] in [5, 2, 3, 7] and x['fecha_def'] != '9999-99-99':
+            return 1
+        else:
+            return 0
+    elif target == 'hospitalizado':
+        if x['variable_id'] in [5, 2, 3, 7] and x[target_column_map[target]]=='HOSPITALIZADO':
             return 1
         else:
             return 0
