@@ -314,3 +314,43 @@ class GetROCCurve(APIView):
         except Exception as e:
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
                 , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DGEFreeMode(APIView):
+
+    def post(self, request):
+        try:
+            target = request.data['target']
+            date = request.data['date']
+            covars = request.data['covariables'] 
+            
+            reports = os.listdir('./reports/')
+            report_cov = None
+            for r in reports:
+                if target in r and date in r and 'occurrences' in r:
+                    report_cov = './reports/dge-covariables-' + target + '-' + date + '-30' + '.csv'
+                    break
+            if report_cov == None:
+                return Response({'message': '`date` not available'}, status=status.HTTP_400_BAD_REQUEST)
+
+            target_attributes = {}
+            delta_period = dt.timedelta(days = 30)
+            final_date = dt.datetime.strptime(date, '%Y-%m-%d') + delta_period
+            target_attributes['date_occurrence__gte'] = date
+            target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
+            target_attributes['variable_id__in'] = [5, 2, 3, 7]
+            
+            occurrences = OccurrenceCOVID19.objects.using('covid19').\
+                filter(**target_attributes).values()
+
+            df_cov = pd.read_csv(report_cov)
+            #print(df_cov)
+
+            df_cov = df_cov[df_cov['variable'].isin(covars)]
+
+            occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences)
+
+            return Response({'data': occs}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'message': 'something was wrong: {0}'.format(str(e))}\
+                , status=status.HTTP_500_INTERNAL_SERVER_ERROR)

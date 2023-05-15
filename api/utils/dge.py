@@ -349,3 +349,48 @@ def is_target(x, target):
             return 1
         else:
             return 0
+
+
+
+def calculate_results_cells_free_mode(df_covars, variables, target, occurrences):
+    """
+        Description: calculate score and probability for cells
+    """
+
+    s0 = df_covars.iloc[0]['s0']
+    results_covariables = None
+    
+    for occ in occurrences:
+        
+        score = s0
+        score_hospitalizado = s0
+        score_uci = s0
+        score_neumonia = s0
+        score_hospitalizado_uci = s0
+        score_hospitalizado_neumonia = s0
+        score_uci_neumonia = s0 
+        score_hospitalizado_uci_neumonia = s0
+        score_hospitalizado_intubado = s0
+        score_uci_intubado = s0
+        score_neumonia_intubado = s0
+        score_intubado = s0 
+        score_hospitalizado_neumonia_intubado = s0
+        score_hospitalizado_uci_intubado = s0
+        score_uci_neumonia_intubado = s0
+        score_hospitalizado_uci_neumonia_intubado = s0
+
+        occ['edad'] = map_age_group(occ['edad'])
+        
+        for variable in variables:
+            
+            #print('VARIABLE', variable, occ)
+            current_score = df_covars[(df_covars['variable'] == variable) &\
+                (df_covars['value'] == occ[variable if variable != 'hospitalizado' else 'tipo_paciente'])] \
+                ['score'].iloc[0]
+
+            score += current_score
+            
+        
+        occ['score'] = score
+
+    return occurrences
