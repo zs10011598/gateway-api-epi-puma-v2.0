@@ -18,6 +18,7 @@ class Covariables(APIView):
         target = None
         initial_date = None
         period = None
+        covariables = None
 
         try:
             if 'target' in request.data.keys():
@@ -37,6 +38,19 @@ class Covariables(APIView):
             else:
                 return Response({"message": "`period` parameter not found"},\
                     status=status.HTTP_400_BAD_REQUEST)
+
+            if 'covariables' in request.data.keys():
+                covariables = request.data['covariables']
+            else:
+                covariables = None            
+
+            reports = os.listdir('./reports/')
+            report_cov = 'dge-covariables-' + target + '-' + initial_date + '-' + str(period) + '.csv'
+            if report_cov in reports:
+                df = pd.read_csv('./reports/{0}'.format(report_cov))
+                if covariables != None:
+                    df = df[df['variable'].isin(covariables)]
+                return Response({'covariables': df.to_dict(orient='records') }, status=status.HTTP_200_OK)
 
             target_attributes = {}
             delta_period = dt.timedelta(days = period)
