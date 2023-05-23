@@ -381,14 +381,19 @@ def calculate_results_cells_free_mode(df_covars, variables, target, occurrences)
 
         occ['edad'] = map_age_group(occ['edad'])
         
+        #print(occ)
+
         for variable in variables:
             
-            #print('VARIABLE', variable, occ)
-            current_score = df_covars[(df_covars['variable'] == variable) &\
-                (df_covars['value'] == occ[variable if variable != 'hospitalizado' else 'tipo_paciente'])] \
-                ['score'].iloc[0]
+            #print('VARIABLE', variable, occ[variable if variable != 'hospitalizado' else 'tipo_paciente'])
+            try:
+                current_score = df_covars[(df_covars['variable'] == variable) &\
+                    (df_covars['value'] == occ[variable if variable != 'hospitalizado' else 'tipo_paciente'])] \
+                    ['score'].iloc[0]
 
-            score += current_score
+                score += current_score
+            except:
+                print('VARIABLE', variable, occ[variable if variable != 'hospitalizado' else 'tipo_paciente'], ' hasnt score')
             
         
         occ['score'] = score

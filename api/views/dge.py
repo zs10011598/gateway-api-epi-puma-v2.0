@@ -337,7 +337,7 @@ class DGEFreeMode(APIView):
             target = request.data['target']
             date = request.data['date']
             covars = request.data['covariables'] 
-            
+
             reports = os.listdir('./reports/')
             report_cov = None
             for r in reports:
@@ -363,8 +363,23 @@ class DGEFreeMode(APIView):
             df_cov = df_cov[df_cov['variable'].isin(covars)]
 
             occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences)
+            df_occ = pd.DataFrame(occs)
+            df_occ = df_occ['score'].sort_values(ascending=False)
+            #print(df_occ)
 
-            return Response({'data': occs}, status=status.HTTP_200_OK)
+            score_decil_bar = []
+            N = df_occ.size
+            #print(N)
+            for i in range(10):
+                #print(i*int(N/10), (i+1)*int(N/10))
+                #print(df_occ[i*int(N/10): (i+1)*int(N/10)])
+                score_decil_bar.append({
+                    'bin': 10 - i,
+                    'sum': df_occ[i*int(N/10): (i+1)*int(N/10)].sum(),
+                    'mean': df_occ[i*int(N/10): (i+1)*int(N/10)].mean()
+                    })
+
+            return Response({'score_decil_bar': score_decil_bar}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
                 , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
