@@ -527,7 +527,8 @@ def save_worldclim_analysis(data):
             nwr.bid = item['bid']
             nwr.icat = item['icat']
             nwr.layer = item['layer']
-            nwr.cells_mun = item['cells']
+            #nwr.cells_mun = item['cells']
+            nwr.id_analysis = id_analysis
             nwr.save()
 
     return id_analysis

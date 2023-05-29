@@ -172,6 +172,14 @@ DATABASES = {
         'NAME': os.environ['DBWORL'],
         'USER': os.environ['DBUSER'],
         'PASSWORD': os.environ['DBPASS']
+    },
+    'future_worldclim': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.environ['DBHOST'],
+        'PORT': os.environ['DBPORT'],
+        'NAME': os.environ['DBFUTU'],
+        'USER': os.environ['DBUSER'],
+        'PASSWORD': os.environ['DBPASS']
     }
 }
 

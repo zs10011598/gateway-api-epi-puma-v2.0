@@ -89,3 +89,21 @@ class VariableWorldclim(models.Model):
     class Meta:
         managed = False
         db_table = 'covariable' 
+
+
+class VariableFutureWorldclim(models.Model):
+
+    label = models.CharField(max_length=255)
+    interval = models.CharField(max_length=255)
+    layer = models.CharField(max_length=255)
+    icat = models.IntegerField()
+    cells_state = ArrayField(models.CharField(max_length=10, blank=True))
+    cells_mun = ArrayField(models.CharField(max_length=10, blank=True))
+    cells_ageb = ArrayField(models.CharField(max_length=10, blank=True))
+    ssp = models.CharField(max_length=10)
+    period = models.CharField(max_length=50)
+    gcm = models.CharField(max_length=50)
+
+    class Meta:
+        managed = False
+        db_table = 'covariable' 

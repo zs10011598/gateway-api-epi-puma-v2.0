@@ -4,7 +4,7 @@ from django.contrib.postgres.fields import ArrayField
 
 class WorldclimResults(models.Model):
     score = models.FloatField()
-    cells_mun = ArrayField(models.CharField(max_length=10, blank=True))
+    #cells_mun = ArrayField(models.CharField(max_length=10, blank=True))
     tag = models.CharField(max_length=30)
     bid = models.IntegerField()
     icat = models.IntegerField()

@@ -2,6 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from ..models.occurrence import *
+from ..models.utils import *
+from ..models.variable import *
 import pandas as pd
 from .analysis_population import get_target_filter
 from ..utils.analysis import *
@@ -226,5 +228,55 @@ class CellsEnsamble(APIView):
         else:
             print(body.errors)
             return Response({'ok': False, 'message': body.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(response, status=status.HTTP_200_OK)
+
+
+
+class WorldclimFuture(APIView):
+
+    def post(self, request):
+        response = {'data_score_cell': []}
+        try:
+
+            id_analysis_worldclim = request.data['id_analysis_worldclim']
+            ssp = request.data['ssp']
+            period = request.data['period']
+            gcm = request.data['gcm']
+
+            wrs = WorldclimResults.objects.filter(id_analysis=id_analysis_worldclim).values('tag', 'score')
+            occs = OccurrenceFutureWorldclim.objects.using('future_worldclim').filter(ssp=ssp, period=period, gcm=gcm).values('variable_id', 'gridid_mun')
+            covs = VariableFutureWorldclim.objects.using('future_worldclim').filter(ssp=ssp, period=period, gcm=gcm).values('id', 'interval')    
+
+            df_wrs = pd.DataFrame(wrs)
+            wrs = None
+            df_covs = pd.DataFrame(covs)
+            covs = None
+
+            df_wrs = df_wrs.merge(df_covs, left_on='tag', right_on='interval')
+            df_wrs = df_wrs.drop(columns=['tag', 'interval'])
+            map_cov = {int(row['id']): row['score'] for index, row in df_wrs.iterrows()}
+            df_wrs = None
+            #print(map_cov)
+
+            map_cell = {}
+            for occ in occs:
+                if not occ['gridid_mun'] in map_cell.keys():
+                    map_cell[occ['gridid_mun']] = [occ['variable_id']]
+                else: 
+                    map_cell[occ['gridid_mun']].append(occ['variable_id'])
+
+            map_score = {}
+            for cell in map_cell.keys():
+                map_score[cell] = 0
+                for variable_id in map_cell[cell]:
+                    if variable_id in map_cov.keys():
+                        map_score[cell] += map_cov[variable_id]
+
+            response['data_score_cell'] = [ {'gridid': cell, 'tscore': map_score[cell]} for  cell in map_score.keys()]
+
+        except Exception as e:
+            print('ERROR', str(e))
+            return Response({'ok': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(response, status=status.HTTP_200_OK)

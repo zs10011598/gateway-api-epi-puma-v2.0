@@ -151,3 +151,18 @@ class OccurrenceSNIB(models.Model):
     class Meta:
         managed = False
         db_table = 'ocurrence'
+
+
+
+class OccurrenceFutureWorldclim(models.Model):
+
+    variable_id = models.IntegerField(db_column='covariable_id')
+    gridid_mun = models.CharField(max_length=5)
+    date_occurrence = models.DateField()
+    ssp = models.CharField(max_length=10)
+    period = models.CharField(max_length=50)
+    gcm = models.CharField(max_length=50)
+
+    class Meta:
+        managed = False
+        db_table = 'occurrence'
