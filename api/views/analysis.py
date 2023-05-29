@@ -207,6 +207,8 @@ class CellsEnsamble(APIView):
             response['ok'] = True
             response['data'] = data[0]
 
+            id_analysis = save_worldclim_analysis(data[0])
+
             data_score_cell = calculate_score_cells_ensamble(data[0])
             response['data_score_cell'] = data_score_cell
 
@@ -217,7 +219,9 @@ class CellsEnsamble(APIView):
             response['percentage_avg'] = percentage_avg            
 
             validation_data = validation_data_analysis(mesh, occs_valid, data_score_cell)
-            response['validation_data'] = validation_data            
+            response['validation_data'] = validation_data 
+
+            response['id_analysis_worldclim'] = id_analysis           
             
         else:
             print(body.errors)

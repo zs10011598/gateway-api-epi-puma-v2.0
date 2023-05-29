@@ -4,8 +4,10 @@ from ..models.variable import *
 from ..serializers.variable import *
 from ..serializers.occurrence import *
 from django.db.models import Count, Sum
+from ..models.utils import *
 import numpy as np
 import pandas as pd
+import time
 
 
 def calculate_epsilon(dbs=['inegi2020'], target_filter={'variable_id__in': [2, 3], 
@@ -510,3 +512,22 @@ def caculate_decil_info(data, data_score_cell, deciles):
                 pass
 
     return percentage_avg
+
+
+def save_worldclim_analysis(data):
+
+    id_analysis = int(time.time())
+    print(id_analysis)
+
+    for item in data:
+        if item['group_name'] == 'worldclim':
+            nwr = WorldclimResults()
+            nwr.score = item['score']
+            nwr.tag = item['tag']
+            nwr.bid = item['bid']
+            nwr.icat = item['icat']
+            nwr.layer = item['layer']
+            nwr.cells_mun = item['cells']
+            nwr.save()
+
+    return id_analysis
