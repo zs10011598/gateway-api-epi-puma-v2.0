@@ -364,22 +364,85 @@ class DGEFreeMode(APIView):
 
             occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences)
             df_occ = pd.DataFrame(occs)
-            df_occ = df_occ['score'].sort_values(ascending=False)
+            df_occ = df_occ.sort_values(by='score', ascending=False)
+            df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
+
             #print(df_occ)
 
             score_decil_bar = []
-            N = df_occ.size
-            #print(N)
+            N = df_occ.shape[0]
+            N_target = df_occ['target'].sum()
+            recall = 0
             for i in range(10):
                 #print(i*int(N/10), (i+1)*int(N/10))
                 #print(df_occ[i*int(N/10): (i+1)*int(N/10)])
+                recall += df_occ.iloc[i*int(N/10): (i+1)*int(N/10)]['target'].sum()
                 score_decil_bar.append({
                     'bin': 10 - i,
-                    'sum': df_occ[i*int(N/10): (i+1)*int(N/10)].sum(),
-                    'mean': df_occ[i*int(N/10): (i+1)*int(N/10)].mean()
+                    'sum': df_occ.iloc[i*int(N/10): (i+1)*int(N/10)]['score'].sum(),
+                    'mean': df_occ.iloc[i*int(N/10): (i+1)*int(N/10)]['score'].mean(),
+                    'recall': recall/N_target
                     })
 
             return Response({'score_decil_bar': score_decil_bar}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'message': 'something was wrong: {0}'.format(str(e))}\
+                , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DGENets(APIView):
+
+    def post(self, request):
+        try:
+            target = request.data['target']
+            date = request.data['date']
+            covars = request.data['covariables']
+
+            reports = os.listdir('./reports/')
+            report_cov = None
+            for r in reports:
+                if target in r and date in r and 'occurrences' in r:
+                    report_cov = './reports/dge-covariables-' + target + '-' + date + '-30' + '.csv'
+                    break
+            
+            if report_cov == None:
+                return Response({'message': '`date` not available'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            target_attributes = {}
+            delta_period = dt.timedelta(days = 30)
+            final_date = dt.datetime.strptime(date, '%Y-%m-%d') + delta_period
+            target_attributes['date_occurrence__gte'] = date
+            target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
+            target_attributes['variable_id__in'] = [5, 2, 3, 7]
+            
+            occurrences = OccurrenceCOVID19.objects.using('covid19').\
+                filter(**target_attributes).values()
+
+            df_cov = pd.read_csv(report_cov)
+            df_cov = df_cov[df_cov['variable'].isin(covars)]
+            occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences)
+            df_occ = pd.DataFrame(occs)
+            df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
+            df_occ = df_occ.sort_values(by='target', ascending=False)
+
+            #print(df_cov)
+            #print(df_occ)
+
+            edges = []
+            df_target = df_occ[df_occ['target'] == 1]
+            nodes = [{'id': get_random_string(5), 'type': 'target', \
+                    'name': target, 'occs': df_target.shape[0]}]
+            for index, row in df_cov.iterrows():
+                df = df_occ[df_occ[row['variable']] == row['value']]
+                variable_id = get_random_string(5)
+                nodes.append({'id': variable_id, 'type': 'variable', \
+                                'name': row['variable'] + ':' + row['value'], \
+                                'occs': df.shape[0]})
+                edges.append({'target': nodes[0]['id'], 'variable': variable_id, \
+                            'epsilon': row['epsilon'], 'score': row['score'], \
+                            'occs': df_target[df_target[row['variable']] == row['value']].shape[0]})
+            
+            return Response({'nodes': nodes, 'edges': edges}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
                 , status=status.HTTP_500_INTERNAL_SERVER_ERROR)

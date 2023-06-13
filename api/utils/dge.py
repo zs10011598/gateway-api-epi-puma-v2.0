@@ -11,6 +11,9 @@ from ..serializers.cell import *
 from sklearn.linear_model import LinearRegression
 import datetime as dt
 import numpy as np
+import random
+import string
+
 
 
 def calculate_results_covariables(target, occurrences):
@@ -339,7 +342,7 @@ def is_target(x, target):
             return 1
         else:
             return 0
-    elif target == 'hospitalizado':
+    elif target == 'HOSPITALIZADO':
         if x['variable_id'] in [5, 2, 3, 7] and x[target_column_map[target]]=='HOSPITALIZADO':
             return 1
         else:
@@ -399,3 +402,9 @@ def calculate_results_cells_free_mode(df_covars, variables, target, occurrences)
         occ['score'] = score
 
     return occurrences
+
+
+def get_random_string(length):
+    letters = string.ascii_lowercase
+    result_str = ''.join(random.choice(letters) for i in range(length))
+    return result_str
