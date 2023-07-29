@@ -178,6 +178,7 @@ def calculate_epsilon_cells_ensamble(
     covariable_filter, 
     occs,
     mesh):
+    #print(occs)
     
     taxon_map_name_snib = {
         'kingdom': 'reinovalido', 
@@ -283,6 +284,7 @@ def calculate_epsilon_cells_ensamble(
     cells = get_mesh(mesh)
     N = cells.count()
     Nc = len(occs)
+    print(Nc)
     PC = Nc/N
     Nc_ = N - Nc
     P_C = (N-Nc)/N
