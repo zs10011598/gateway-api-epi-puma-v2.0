@@ -413,54 +413,66 @@ class DGENets(APIView):
 
     def post(self, request):
         try:
-            target = request.data['target']
+            targets = request.data['targets']
             date = request.data['date']
             covars = request.data['covariables']
 
             reports = os.listdir('./reports/')
             report_cov = None
-            for r in reports:
-                if target in r and date in r and 'occurrences' in r:
-                    report_cov = './reports/dge-covariables-' + target + '-' + date + '-30' + '.csv'
-                    break
-            
-            if report_cov == None:
-                return Response({'message': '`date` not available'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            target_attributes = {}
-            delta_period = dt.timedelta(days = 30)
-            final_date = dt.datetime.strptime(date, '%Y-%m-%d') + delta_period
-            target_attributes['date_occurrence__gte'] = date
-            target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
-            target_attributes['variable_id__in'] = [5, 2, 3, 7]
-            
-            occurrences = OccurrenceCOVID19.objects.using('covid19').\
-                filter(**target_attributes).values()
+            is_available = False
 
-            df_cov = pd.read_csv(report_cov)
-            df_cov = df_cov[df_cov['variable'].isin(covars)]
-            occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences)
-            df_occ = pd.DataFrame(occs)
-            df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
-            df_occ = df_occ.sort_values(by='target', ascending=False)
-
-            #print(df_cov)
-            #print(df_occ)
-
+            for target in targets:
+                report_cov = 'dge-covariables-' + target + '-' + date + '-30' + '.csv'
+                #print(report_cov, reports)
+                if report_cov in reports:
+                    is_available = True
+                if not is_available:
+                    return Response({'message': '`date` not available'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            nodes = []
             edges = []
-            df_target = df_occ[df_occ['target'] == 1]
-            nodes = [{'id': get_random_string(5), 'type': 'target', \
-                    'name': target, 'occs': df_target.shape[0]}]
-            for index, row in df_cov.iterrows():
-                df = df_occ[df_occ[row['variable']] == row['value']]
-                variable_id = get_random_string(5)
-                nodes.append({'id': variable_id, 'type': 'variable', \
-                                'name': row['variable'] + ':' + row['value'], \
-                                'occs': df.shape[0]})
-                edges.append({'target': nodes[0]['id'], 'variable': variable_id, \
-                            'epsilon': row['epsilon'], 'score': row['score'], \
-                            'occs': df_target[df_target[row['variable']] == row['value']].shape[0]})
-            
+            added_nodes = {}
+            for target in targets:
+                target_attributes = {}
+                delta_period = dt.timedelta(days = 30)
+                final_date = dt.datetime.strptime(date, '%Y-%m-%d') + delta_period
+                target_attributes['date_occurrence__gte'] = date
+                target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
+                target_attributes['variable_id__in'] = [5, 2, 3, 7]
+                
+                occurrences = OccurrenceCOVID19.objects.using('covid19').\
+                    filter(**target_attributes).values()
+                
+                report_cov = './reports/dge-covariables-' + target + '-' + date + '-30' + '.csv'
+                df_cov = pd.read_csv(report_cov)
+                df_cov = df_cov[df_cov['variable'].isin(covars)]
+                occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences)
+                df_occ = pd.DataFrame(occs)
+                df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
+                df_occ = df_occ.sort_values(by='target', ascending=False)
+
+                #print(df_cov)
+                #print(df_occ)
+
+                df_target = df_occ[df_occ['target'] == 1]
+                target_id = get_random_string(5)
+                nodes.append({'id': target_id, 'type': 'target', \
+                        'name': target, 'occs': df_target.shape[0]})
+                added_nodes[target] = target_id
+                for index, row in df_cov.iterrows():
+                    df = df_occ[df_occ[row['variable']] == row['value']]
+                    if not row['variable'] + ':' + row['value'] in added_nodes.keys():
+                        variable_id = get_random_string(5)
+                        nodes.append({'id': variable_id, 'type': 'variable', \
+                                        'name': row['variable'] + ':' + row['value'], \
+                                        'occs': df.shape[0]})
+                        added_nodes[row['variable'] + ':' + row['value']] = variable_id
+                    else:
+                        variable_id = added_nodes[row['variable'] + ':' + row['value']]
+                    edges.append({'target': target_id, 'variable': variable_id, \
+                                'epsilon': row['epsilon'], 'score': row['score'], \
+                                'occs': df_target[df_target[row['variable']] == row['value']].shape[0]})
+                
             return Response({'nodes': nodes, 'edges': edges}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
