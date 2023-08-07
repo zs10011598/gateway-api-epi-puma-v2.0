@@ -248,14 +248,33 @@ class AvailableDateAnalysis(APIView):
 
     def get(self, request):
         try:
-            if not 'target' in request.GET.keys():
+            target = None
+            targets = None
+            available_dates = []
+            if not 'target' in request.GET.keys() and not 'targets' in request.GET.keys():
                 return Response({'message': '`target` parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
             else:
-                target = request.GET['target']
+                if not 'targets' in request.GET.keys():
+                    target = request.GET['target']
+                else:
+                    targets = request.GET['targets']
+                    targets = targets.split(',')
             reports = os.listdir('./reports/')
-            reports_cov = [r for r in reports if r.startswith('dge-') and target in r and 'occurrences' in r]
+            if target != None:
+                reports_cov = [r for r in reports if r.startswith('dge-') and target in r and 'occurrences' in r]
+                available_dates = [rcov.split(target+'-')[1].split('.csv')[0][:-3] for rcov in reports_cov]
+            else:
+                for target in targets:
+                    reports_cov = [r for r in reports if r.startswith('dge-') and target in r and 'occurrences' in r]
+                    ad_aux = [rcov.split(target+'-')[1].split('.csv')[0][:-3] for rcov in reports_cov]
+                    #print(target, available_dates, ad_aux)
+                    if len(available_dates) == 0:
+                        available_dates = ad_aux
+                    else:
+                        available_dates = [r for r in ad_aux if r in available_dates] 
+                    available_dates = list(set(available_dates))
             return Response({
-                'data': [rcov.split(target+'-')[1].split('.csv')[0][:-3] for rcov in reports_cov]}, status=status.HTTP_200_OK)
+                'data': available_dates}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
                 , status=status.HTTP_500_INTERNAL_SERVER_ERROR)

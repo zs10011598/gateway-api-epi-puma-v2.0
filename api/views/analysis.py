@@ -192,7 +192,7 @@ class CellsEnsamble(APIView):
                         #print(occs)
 
                 N_occs = occs.count()
-                train_limit = int(N_occs*0.7)
+                train_limit = int(N_occs*0.9)
                 if train_limit <= 0:
                     return Response({'ok': False, 'message': 'The number of training(70%) cells is 0'}, status=status.HTTP_400_BAD_REQUEST)    
                 valid_limit = N_occs - train_limit
