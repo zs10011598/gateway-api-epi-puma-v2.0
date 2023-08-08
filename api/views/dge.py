@@ -428,33 +428,36 @@ class DGENets(APIView):
                     is_available = True
                 if not is_available:
                     return Response({'message': '`date` not available'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
             nodes = []
             edges = []
             added_nodes = {}
             for target in targets:
+                
                 target_attributes = {}
                 delta_period = dt.timedelta(days = 30)
                 final_date = dt.datetime.strptime(date, '%Y-%m-%d') + delta_period
-                target_attributes['date_occurrence__gte'] = date
-                target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
+                if target == 'FALLECIDO':
+                    target_attributes['fecha_def__gte'] = date
+                    target_attributes['fecha_def__lt'] = final_date.strftime('%Y-%m-%d')
+                else:
+                    target_attributes['date_occurrence__gte'] = date
+                    target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
                 target_attributes['variable_id__in'] = [5, 2, 3, 7]
-                
+                is_target_query(target_attributes, target)
+                #print(target_attributes)
+
                 occurrences = OccurrenceCOVID19.objects.using('covid19').\
                     filter(**target_attributes).values()
-                
+
                 report_cov = './reports/dge-covariables-' + target + '-' + date + '-30' + '.csv'
                 df_cov = pd.read_csv(report_cov)
                 df_cov = df_cov[df_cov['variable'].isin(covars)]
                 occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences)
                 df_occ = pd.DataFrame(occs)
-                df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
-                df_occ = df_occ.sort_values(by='target', ascending=False)
-
-                #print(df_cov)
-                #print(df_occ)
-
-                df_target = df_occ[df_occ['target'] == 1]
+                
+                df_target = df_occ
+                #print(df_target)
                 target_id = get_random_string(5)
                 nodes.append({'id': target_id, 'type': 'target', \
                         'name': target, 'occs': df_target.shape[0]})

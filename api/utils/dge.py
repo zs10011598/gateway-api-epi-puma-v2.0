@@ -354,6 +354,23 @@ def is_target(x, target):
             return 0
 
 
+def is_target_query(d, target):
+    """
+        Description: Decides if a record is target
+    """
+    target_column_map = {
+        'HOSPITALIZADO': 'tipo_paciente', 
+        'NEUMONIA': 'neumonia', 
+        'INTUBADO': 'intubado',
+        'UCI': 'uci'}
+
+    if target == 'FALLECIDO':
+        pass
+    elif target == 'HOSPITALIZADO':
+        d[target_column_map[target]]='HOSPITALIZADO'
+    else:
+        d[target_column_map[target]]='SI'
+
 
 def calculate_results_cells_free_mode(df_covars, variables, target, occurrences):
     """
@@ -364,28 +381,17 @@ def calculate_results_cells_free_mode(df_covars, variables, target, occurrences)
     results_covariables = None
     
     for occ in occurrences:
+
+        #print(occ, is_target(occ, target))
+        #if is_target(occ, target) == 0:
+        #    occ['target'] = int(0)
+        #    continue
+        #else:
+        #    occ['target'] = int(1)
         
         score = s0
-        score_hospitalizado = s0
-        score_uci = s0
-        score_neumonia = s0
-        score_hospitalizado_uci = s0
-        score_hospitalizado_neumonia = s0
-        score_uci_neumonia = s0 
-        score_hospitalizado_uci_neumonia = s0
-        score_hospitalizado_intubado = s0
-        score_uci_intubado = s0
-        score_neumonia_intubado = s0
-        score_intubado = s0 
-        score_hospitalizado_neumonia_intubado = s0
-        score_hospitalizado_uci_intubado = s0
-        score_uci_neumonia_intubado = s0
-        score_hospitalizado_uci_neumonia_intubado = s0
-
         occ['edad'] = map_age_group(occ['edad'])
         
-        #print(occ)
-
         for variable in variables:
             
             #print('VARIABLE', variable, occ[variable if variable != 'hospitalizado' else 'tipo_paciente'])
