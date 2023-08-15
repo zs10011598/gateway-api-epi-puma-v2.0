@@ -449,6 +449,10 @@ class DGENets(APIView):
             targets = request.data['targets']
             date = request.data['date']
             covars = request.data['covariables']
+            try:
+                include_inegi_vars = request.data['include_inegi_vars']
+            except:
+                include_inegi_vars = False
 
             reports = os.listdir('./reports/')
             report_cov = None
@@ -461,6 +465,16 @@ class DGENets(APIView):
                     is_available = True
                 if not is_available:
                     return Response({'message': '`date` not available'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if include_inegi_vars:
+                df_inegi_cov = pd.read_csv('./reports/inegi_covariables-' + target + '-' + str(date) + '.csv', dtype={'gridid_mun': str})
+                df_inegi_cov = df_inegi_cov.rename(columns={'Nc_Nc_': 'Nc_', 'name': 'variable'})
+                df_inegi_cov['value'] = df_inegi_cov['variable'].apply(lambda x: '')
+                df_inegi_cov = df_inegi_cov[['id', 'variable', 'value', 'Nx', 'Ncx', \
+                    'PCX', 'PC', 'Nc', 'N', 'epsilon',
+                    'Nc_', 'Nc_x', 'P_C', 'P_CX', 's0', 'score']]
+                df_inegi_occ = OccurrenceINEGI2020.objects.using('inegi2020').values('gridid_mun', 'variable_id')
+                df_inegi_occ = pd.DataFrame(df_inegi_occ)
 
             nodes = []
             edges = []
@@ -486,15 +500,16 @@ class DGENets(APIView):
                 report_cov = './reports/dge-covariables-' + target + '-' + date + '-30' + '.csv'
                 df_cov = pd.read_csv(report_cov)
                 df_cov = df_cov[df_cov['variable'].isin(covars)]
-                occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences)
+                occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences, include_inegi_vars, date)
                 df_occ = pd.DataFrame(occs)
-                
+
                 df_target = df_occ
                 #print(df_target)
                 target_id = get_random_string(5)
                 nodes.append({'id': target_id, 'type': 'target', \
                         'name': target, 'occs': df_target.shape[0]})
                 added_nodes[target] = target_id
+
                 for index, row in df_cov.iterrows():
                     df = df_occ[df_occ[row['variable']] == row['value']]
                     if not row['variable'] + ':' + row['value'] in added_nodes.keys():
@@ -508,6 +523,24 @@ class DGENets(APIView):
                     edges.append({'target': target_id, 'variable': variable_id, \
                                 'epsilon': row['epsilon'], 'score': row['score'], \
                                 'occs': df_target[df_target[row['variable']] == row['value']].shape[0]})
+
+                if include_inegi_vars:
+                    target_cells = df_occ['gridid_mun'].unique()
+                    print(df_inegi_occ)
+                    covariable_ids = df_inegi_occ[df_inegi_occ['gridid_mun'].isin(target_cells)]['variable_id'].unique()
+                    df_inegi_cov = df_inegi_cov[df_inegi_cov['id'].isin(covariable_ids)]
+                    for index, row in df_inegi_cov.iterrows():
+                        if not row['variable'] in added_nodes.keys():
+                            variable_id = get_random_string(5)
+                            nodes.append({'id': variable_id, 'type': 'variable', \
+                                        'name': row['variable'], \
+                                        'occs': df_inegi_occ[df_inegi_occ['variable_id'] == row['id']].shape[0]})
+                            added_nodes[row['variable']] = variable_id
+                        else:
+                            variable_id = added_nodes[row['variable']]
+                        edges.append({'target': target_id, 'variable': variable_id, \
+                                'epsilon': row['epsilon'], 'score': row['score'], \
+                                'occs': df_inegi_occ[(df_inegi_occ['variable_id'] == row['id']) & (df_inegi_occ['gridid_mun'].isin(target_cells))].shape[0]})
                 
             return Response({'nodes': nodes, 'edges': edges}, status=status.HTTP_200_OK)
         except Exception as e:
