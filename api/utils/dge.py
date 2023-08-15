@@ -372,7 +372,7 @@ def is_target_query(d, target):
         d[target_column_map[target]]='SI'
 
 
-def calculate_results_cells_free_mode(df_covars, variables, target, occurrences):
+def calculate_results_cells_free_mode(df_covars, variables, target, occurrences, include_inegi_vars=False, date_occurrence=None):
     """
         Description: calculate score and probability for cells
     """
@@ -392,6 +392,10 @@ def calculate_results_cells_free_mode(df_covars, variables, target, occurrences)
         score = s0
         occ['edad'] = map_age_group(occ['edad'])
         
+        if include_inegi_vars and occ['gridid_mun'][2:] != '999':
+            df_inegi = pd.read_csv('./reports/inegi_occurrences-' + target + '-' + str(date_occurrence) + '.csv', dtype={'gridid_mun': str})
+            score += df_inegi[df_inegi['gridid_mun'] == occ['gridid_mun']]['scores'].iloc[0]
+        
         for variable in variables:
             
             #print('VARIABLE', variable, occ[variable if variable != 'hospitalizado' else 'tipo_paciente'])
@@ -403,9 +407,9 @@ def calculate_results_cells_free_mode(df_covars, variables, target, occurrences)
                 score += current_score
             except:
                 print('VARIABLE', variable, occ[variable if variable != 'hospitalizado' else 'tipo_paciente'], ' hasnt score')
-            
         
         occ['score'] = score
+
 
     return occurrences
 

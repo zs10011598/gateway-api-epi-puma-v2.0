@@ -19,6 +19,7 @@ class Covariables(APIView):
         initial_date = None
         period = None
         covariables = None
+        include_inegi_vars = False
 
         try:
             if 'target' in request.data.keys():
@@ -42,15 +43,42 @@ class Covariables(APIView):
             if 'covariables' in request.data.keys():
                 covariables = request.data['covariables']
             else:
-                covariables = None            
+                covariables = None
+
+            try:
+                include_inegi_vars = request.data['include_inegi_vars']
+            except:
+                include_inegi_vars = False
 
             reports = os.listdir('./reports/')
             report_cov = 'dge-covariables-' + target + '-' + initial_date + '-' + str(period) + '.csv'
-            if report_cov in reports:
+            
+            if report_cov in reports:    
                 df = pd.read_csv('./reports/{0}'.format(report_cov))
                 if covariables != None:
                     df = df[df['variable'].isin(covariables)]
-                return Response({'covariables': df.to_dict(orient='records') }, status=status.HTTP_200_OK)
+                results_covariables = df.to_dict(orient='records')
+                if include_inegi_vars:
+                    df_inegi = pd.read_csv('./reports/inegi_covariables-' + target + '-' + str(initial_date) + '.csv', dtype={'gridid_mun': str})                
+                    for index, row in df_inegi.iterrows():
+                        results_covariables.append({
+                            'variable': row['name'],
+                            'value': '',
+                            'Nx': row['Nx'], 
+                            'Ncx': row['Ncx'], 
+                            'PCX': row['PCX'], 
+                            'PC': row['PC'], 
+                            'Nc': row['Nc'], 
+                            'N': row['N'], 
+                            'epsilon': row['epsilon'],
+                            'Nc_': row['Nc_Nc_'],
+                            'Nc_x': row['Nc_x'],
+                            'P_C': row['P_C'],
+                            'P_CX': row['P_CX'],
+                            's0': row['s0'],
+                            'score': row['score']
+                        })
+                return Response({'covariables':  results_covariables}, status=status.HTTP_200_OK)
 
             target_attributes = {}
             delta_period = dt.timedelta(days = period)
@@ -65,9 +93,8 @@ class Covariables(APIView):
             print(target_attributes)
             #print('# Occs: ' + str(occurrences.count()))
 
-            results_covariables = calculate_results_covariables(target, occurrences)
+            results_covariables = calculate_results_covariables(target, occurrences)            
             return Response({'covariables': results_covariables}, status=status.HTTP_200_OK)
-        
         except Exception as e:
             print(str(e))
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
@@ -387,7 +414,7 @@ class DGEFreeMode(APIView):
 
             df_cov = df_cov[df_cov['variable'].isin(covars)]
 
-            occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences)
+            occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences, include_inegi_vars, date)
             df_occ = pd.DataFrame(occs)
             df_occ = df_occ.sort_values(by='score', ascending=False)
             df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
