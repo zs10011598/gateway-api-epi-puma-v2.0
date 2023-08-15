@@ -37,3 +37,4 @@ class EnsambleCellsRequest(serializers.Serializer):
     lim_inf_validation = serializers.DateField(required=False)
     lim_sup_validation = serializers.DateField(required=False)
     selected_decile = serializers.ListField(child=serializers.IntegerField(), required=False)
+    validation = serializers.BooleanField(required=True)

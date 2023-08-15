@@ -355,7 +355,13 @@ class DGEFreeMode(APIView):
         try:
             target = request.data['target']
             date = request.data['date']
-            covars = request.data['covariables'] 
+            covars = request.data['covariables']
+            include_inegi_vars = False
+
+            try:
+                include_inegi_vars = request.data['include_inegi_vars']
+            except:
+                include_inegi_vars = False
 
             reports = os.listdir('./reports/')
             report_cov = None

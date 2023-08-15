@@ -169,6 +169,7 @@ class CellsEnsamble(APIView):
                 target = body.data['target']
                 target_attribute_filter = body.data['target_attribute_filter']
                 mesh = body.data['mesh']
+                validation = body.data['validation']
                 
                 if 'agent' in target.keys():
                     if not target['agent'] in ['vector', 'hospedero', 'patogeno']:
@@ -192,12 +193,16 @@ class CellsEnsamble(APIView):
                         #print(occs)
 
                 N_occs = occs.count()
-                train_limit = int(N_occs*0.9)
-                if train_limit <= 0:
-                    return Response({'ok': False, 'message': 'The number of training(70%) cells is 0'}, status=status.HTTP_400_BAD_REQUEST)    
-                valid_limit = N_occs - train_limit
-                occs_valid = random.sample(list(occs), k=valid_limit)
-                occs_train = [occ for occ in occs if not occ in occs_valid]
+                if validation:
+                    train_limit = int(N_occs*0.7)
+                    if train_limit <= 0:
+                        return Response({'ok': False, 'message': 'The number of training(70%) cells is 0'}, status=status.HTTP_400_BAD_REQUEST)    
+                    valid_limit = N_occs - train_limit
+                    occs_valid = random.sample(list(occs), k=valid_limit)
+                    occs_train = [occ for occ in occs if not occ in occs_valid]
+                else:
+                    train_limit = N_occs
+                    occs_train = [occ for occ in occs]
             except Exception as e:
                 print(str(e))
                 return Response({'ok': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -223,8 +228,9 @@ class CellsEnsamble(APIView):
                 body.data['selected_decile'] if 'selected_decile' in body.data.keys() else [10])
             response['percentage_avg'] = percentage_avg            
 
-            validation_data = validation_data_analysis(mesh, occs_valid, data_score_cell)
-            response['validation_data'] = validation_data 
+            if validation:
+                validation_data = validation_data_analysis(mesh, occs_valid, data_score_cell)
+                response['validation_data'] = validation_data 
 
             response['id_analysis_worldclim'] = id_analysis           
             
