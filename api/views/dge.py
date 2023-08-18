@@ -20,6 +20,7 @@ class Covariables(APIView):
         period = None
         covariables = None
         include_inegi_vars = False
+        filter_inegi = []
 
         try:
             if 'target' in request.data.keys():
@@ -47,6 +48,10 @@ class Covariables(APIView):
 
             try:
                 include_inegi_vars = request.data['include_inegi_vars']
+                try:
+                    filter_inegi = request.data['filter_inegi']
+                except:
+                    filter_inegi = []
             except:
                 include_inegi_vars = False
 
@@ -59,11 +64,12 @@ class Covariables(APIView):
                     df = df[df['variable'].isin(covariables)]
                 results_covariables = df.to_dict(orient='records')
                 if include_inegi_vars:
-                    df_inegi = pd.read_csv('./reports/inegi_covariables-' + target + '-' + str(initial_date) + '.csv', dtype={'gridid_mun': str})                
+                    df_inegi = pd.read_csv('./reports/inegi_covariables-' + target + '-' + str(initial_date) + '.csv', dtype={'gridid_mun': str})
+                    df_inegi = df_inegi[df_inegi['variable'].isin(filter_inegi)]
                     for index, row in df_inegi.iterrows():
                         results_covariables.append({
-                            'variable': row['name'],
-                            'value': '',
+                            'variable': row['variable'],
+                            'value': row['value'],
                             'Nx': row['Nx'], 
                             'Ncx': row['Ncx'], 
                             'PCX': row['PCX'], 
@@ -71,7 +77,7 @@ class Covariables(APIView):
                             'Nc': row['Nc'], 
                             'N': row['N'], 
                             'epsilon': row['epsilon'],
-                            'Nc_': row['Nc_Nc_'],
+                            'Nc_': row['Nc'],
                             'Nc_x': row['Nc_x'],
                             'P_C': row['P_C'],
                             'P_CX': row['P_CX'],
@@ -449,8 +455,13 @@ class DGENets(APIView):
             targets = request.data['targets']
             date = request.data['date']
             covars = request.data['covariables']
+            filter_inegi = []
             try:
                 include_inegi_vars = request.data['include_inegi_vars']
+                try:
+                    filter_inegi = request.data['filter_inegi']
+                except:
+                    filter_inegi = []
             except:
                 include_inegi_vars = False
 
@@ -468,12 +479,13 @@ class DGENets(APIView):
 
             if include_inegi_vars:
                 df_inegi_cov = pd.read_csv('./reports/inegi_covariables-' + target + '-' + str(date) + '.csv', dtype={'gridid_mun': str})
-                df_inegi_cov = df_inegi_cov.rename(columns={'Nc_Nc_': 'Nc_', 'name': 'variable'})
-                df_inegi_cov['value'] = df_inegi_cov['variable'].apply(lambda x: '')
+                df_inegi_cov = df_inegi_cov[df_inegi_cov['variable'].isin(filter_inegi)]
                 df_inegi_cov = df_inegi_cov[['id', 'variable', 'value', 'Nx', 'Ncx', \
-                    'PCX', 'PC', 'Nc', 'N', 'epsilon',
-                    'Nc_', 'Nc_x', 'P_C', 'P_CX', 's0', 'score']]
-                df_inegi_occ = OccurrenceINEGI2020.objects.using('inegi2020').values('gridid_mun', 'variable_id')
+                    'PCX', 'PC', 'Nc', 'N', 'epsilon', 'Nc_', 'Nc_x', 'P_C', 'P_CX', \
+                    's0', 'score']]
+                df_inegi_occ = OccurrenceINEGI2020.objects.using('inegi2020')\
+                    .filter(variable_id__in=df_inegi_cov['id'].unique().tolist())\
+                    .values('gridid_mun', 'variable_id')
                 df_inegi_occ = pd.DataFrame(df_inegi_occ)
 
             nodes = []
@@ -526,18 +538,17 @@ class DGENets(APIView):
 
                 if include_inegi_vars:
                     target_cells = df_occ['gridid_mun'].unique()
-                    print(df_inegi_occ)
                     covariable_ids = df_inegi_occ[df_inegi_occ['gridid_mun'].isin(target_cells)]['variable_id'].unique()
                     df_inegi_cov = df_inegi_cov[df_inegi_cov['id'].isin(covariable_ids)]
                     for index, row in df_inegi_cov.iterrows():
                         if not row['variable'] in added_nodes.keys():
                             variable_id = get_random_string(5)
                             nodes.append({'id': variable_id, 'type': 'variable', \
-                                        'name': row['variable'], \
+                                        'name': row['variable'] + ':' + row['value'], \
                                         'occs': df_inegi_occ[df_inegi_occ['variable_id'] == row['id']].shape[0]})
-                            added_nodes[row['variable']] = variable_id
+                            added_nodes[row['variable'] + ':' + row['value']] = variable_id
                         else:
-                            variable_id = added_nodes[row['variable']]
+                            variable_id = added_nodes[row['variable'] + ':' + row['value']]
                         edges.append({'target': target_id, 'variable': variable_id, \
                                 'epsilon': row['epsilon'], 'score': row['score'], \
                                 'occs': df_inegi_occ[(df_inegi_occ['variable_id'] == row['id']) & (df_inegi_occ['gridid_mun'].isin(target_cells))].shape[0]})
