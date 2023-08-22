@@ -12,9 +12,12 @@ from ..utils.helpers import *
 from ..utils.analysis_population import *
 
 from ..models.occurrence import *
+from rest_framework.permissions import IsAuthenticated
 
 
 class Vaccines(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         """
@@ -25,6 +28,8 @@ class Vaccines(APIView):
 
 
 class SummaryVaccines(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         """
@@ -100,6 +105,8 @@ class SummaryVaccines(APIView):
 
 class Mesh(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         """
             Description: Vaccines endpoint
@@ -131,6 +138,8 @@ class Mesh(APIView):
 
 
 class TargetGroups(APIView):
+
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
         """

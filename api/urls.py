@@ -47,5 +47,5 @@ urlpatterns = [
     path('dge/covariables/profile/', GPC.as_view(), name='dge_get_profile_covariable'),
     path('dge/roc/', GROCC.as_view(), name='dge_get_roc_curve'),   
     path('dge/free-mode/', DGEFM.as_view(), name='free_mode'),
-    path('dge/nets/', DGENets.as_view(), name='dge_nets'),
+    path('dge/nets/', DGENets.as_view(), name='dge_nets')
 ]

@@ -11,9 +11,12 @@ import datetime as dt
 import json
 import os
 import time
+from rest_framework.permissions import IsAuthenticated
 
 
 class Covariables(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         target = None
@@ -109,6 +112,8 @@ class Covariables(APIView):
 
 
 class Cells(APIView):
+
+    permission_classes = [IsAuthenticated]
     
     def post(self, request):
         target = None
@@ -149,6 +154,8 @@ class Cells(APIView):
 
 
 class GetHistoricalProfile(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         covariables = [\
@@ -280,6 +287,8 @@ class GetHistoricalProfile(APIView):
 
 class AvailableDateAnalysis(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         try:
             target = None
@@ -316,6 +325,8 @@ class AvailableDateAnalysis(APIView):
 
 class GetProfileCovariable(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         try:
             target = request.data['target']
@@ -336,6 +347,8 @@ class GetProfileCovariable(APIView):
 
 
 class GetROCCurve(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
@@ -384,6 +397,8 @@ class GetROCCurve(APIView):
 
 
 class DGEFreeMode(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
@@ -450,6 +465,8 @@ class DGEFreeMode(APIView):
 
 
 class DGENets(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
@@ -531,7 +548,7 @@ class DGENets(APIView):
                 print('PROCESSING ', target, ' calculating score ', checkpoint -starting_time, 'secs')
                 df_occ = pd.DataFrame(occurrences)
                 df_occ['edad'] = df_occ['edad'].apply(lambda x: map_age_group(x))
-                print(df_occ)
+                #print(df_occ)
                 starting_time = checkpoint
 
                 target_id = get_random_string(5)

@@ -9,9 +9,12 @@ import datetime as dt
 
 import json
 import os
+from rest_framework.permissions import IsAuthenticated
 
 
 class Covariables(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         """
@@ -101,6 +104,8 @@ class Covariables(APIView):
 
 class Cells(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         """
             
@@ -135,6 +140,8 @@ class Cells(APIView):
 
 
 class CellsTimeValidation(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         """
@@ -225,6 +232,8 @@ class CellsTimeValidation(APIView):
 
 class ComputedCellsTimeValidation(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         """
             Description: 
@@ -281,6 +290,8 @@ class ComputedCellsTimeValidation(APIView):
 
 
 class CovariablesDGE(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         """
@@ -355,6 +366,8 @@ class CovariablesDGE(APIView):
 
 
 class CellsTimeValidationDGE(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         """

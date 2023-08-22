@@ -11,9 +11,12 @@ from ..serializers.cells_ensamble import EnsambleCellsRequest
 import json
 from django.db.models import Q
 import random
+from rest_framework.permissions import IsAuthenticated
 
 
 class Covariables(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         """
@@ -86,6 +89,8 @@ class Covariables(APIView):
 
 class CovariablesCellsEnsamble(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
 
         taxon_map_name = {
@@ -145,6 +150,8 @@ class CovariablesCellsEnsamble(APIView):
 
 
 class CellsEnsamble(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
 
@@ -243,6 +250,8 @@ class CellsEnsamble(APIView):
 
 
 class WorldclimFuture(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         response = {'data_score_cell': []}
