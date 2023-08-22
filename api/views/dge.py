@@ -10,6 +10,7 @@ import datetime as dt
 
 import json
 import os
+import time
 
 
 class Covariables(APIView):
@@ -452,6 +453,7 @@ class DGENets(APIView):
 
     def post(self, request):
         try:
+            starting_time = time.time()
             targets = request.data['targets']
             date = request.data['date']
             covars = request.data['covariables']
@@ -487,12 +489,13 @@ class DGENets(APIView):
                     .filter(variable_id__in=df_inegi_cov['id'].unique().tolist())\
                     .values('gridid_mun', 'variable_id')
                 df_inegi_occ = pd.DataFrame(df_inegi_occ)
-
             nodes = []
             edges = []
             added_nodes = {}
+            checkpoint = time.time()
+            print('BEFORE START ', checkpoint -starting_time, 'secs')
+            starting_time = checkpoint
             for target in targets:
-                
                 target_attributes = {}
                 delta_period = dt.timedelta(days = 30)
                 final_date = dt.datetime.strptime(date, '%Y-%m-%d') + delta_period
@@ -506,22 +509,38 @@ class DGENets(APIView):
                 is_target_query(target_attributes, target)
                 #print(target_attributes)
 
+                checkpoint = time.time()
+                print('PROCESSING ', target, ' occurrences query ', checkpoint -starting_time, 'secs')
                 occurrences = OccurrenceCOVID19.objects.using('covid19').\
-                    filter(**target_attributes).values()
+                    filter(**target_attributes).values('gridid_mun',
+                                'edad', 'sexo', 'neumonia', 'embarazo',
+                               'diabetes', 'epoc', 'asma', 'inmusupr', 'hipertension',
+                               'cardiovascular', 'obesidad', 'renal_cronica', 'tabaquismo', 'uci',
+                               'intubado', 'tipo_paciente').distinct()
+                starting_time = checkpoint
+                #print(occurrences.count())
 
+                checkpoint = time.time()
+                print('PROCESSING ', target, ' reading covariable file ', checkpoint -starting_time, 'secs')
                 report_cov = './reports/dge-covariables-' + target + '-' + date + '-30' + '.csv'
                 df_cov = pd.read_csv(report_cov)
                 df_cov = df_cov[df_cov['variable'].isin(covars)]
-                occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences, include_inegi_vars, date)
-                df_occ = pd.DataFrame(occs)
+                starting_time = checkpoint
 
-                df_target = df_occ
-                #print(df_target)
+                checkpoint = time.time()
+                print('PROCESSING ', target, ' calculating score ', checkpoint -starting_time, 'secs')
+                df_occ = pd.DataFrame(occurrences)
+                df_occ['edad'] = df_occ['edad'].apply(lambda x: map_age_group(x))
+                print(df_occ)
+                starting_time = checkpoint
+
                 target_id = get_random_string(5)
                 nodes.append({'id': target_id, 'type': 'target', \
-                        'name': target, 'occs': df_target.shape[0]})
+                        'name': target, 'occs': df_occ.shape[0]})
                 added_nodes[target] = target_id
 
+                checkpoint = time.time()
+                print('PROCESSING ', target, ' calculate net ', checkpoint -starting_time, 'secs')
                 for index, row in df_cov.iterrows():
                     df = df_occ[df_occ[row['variable']] == row['value']]
                     if not row['variable'] + ':' + row['value'] in added_nodes.keys():
@@ -534,7 +553,7 @@ class DGENets(APIView):
                         variable_id = added_nodes[row['variable'] + ':' + row['value']]
                     edges.append({'target': target_id, 'variable': variable_id, \
                                 'epsilon': row['epsilon'], 'score': row['score'], \
-                                'occs': df_target[df_target[row['variable']] == row['value']].shape[0]})
+                                'occs': df_occ[df_occ[row['variable']] == row['value']].shape[0]})
 
                 if include_inegi_vars:
                     target_cells = df_occ['gridid_mun'].unique()
@@ -552,7 +571,7 @@ class DGENets(APIView):
                         edges.append({'target': target_id, 'variable': variable_id, \
                                 'epsilon': row['epsilon'], 'score': row['score'], \
                                 'occs': df_inegi_occ[(df_inegi_occ['variable_id'] == row['id']) & (df_inegi_occ['gridid_mun'].isin(target_cells))].shape[0]})
-                
+                starting_time = checkpoint
             return Response({'nodes': nodes, 'edges': edges}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
