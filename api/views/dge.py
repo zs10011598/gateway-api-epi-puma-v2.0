@@ -418,7 +418,7 @@ class DGEFreeMode(APIView):
             #    filter(**target_attributes).values()
             occurrences = pd.read_csv('./reports/occurrences_' + date + '.csv')
             occurrences = occurrences.sample(frac=1).reset_index(drop=True)
-            occurrences = occurrences.iloc[:20000]
+            occurrences = occurrences.iloc[:5000]
             occurrences = occurrences.rename(columns={'covariable_id': 'variable_id'})
             occurrences = occurrences.to_dict(orient='records')
 
