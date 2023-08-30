@@ -387,6 +387,7 @@ class DGEFreeMode(APIView):
 
     def post(self, request):
         try:
+            starting_time = time.time()
             target = request.data['target']
             date = request.data['date']
             covars = request.data['covariables']
@@ -413,16 +414,34 @@ class DGEFreeMode(APIView):
             target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
             target_attributes['variable_id__in'] = [5, 2, 3, 7]
             
-            occurrences = OccurrenceCOVID19.objects.using('covid19').\
-                filter(**target_attributes).values()
+            #occurrences = OccurrenceCOVID19.objects.using('covid19').\
+            #    filter(**target_attributes).values()
+            occurrences = pd.read_csv('./reports/occurrences_' + date + '.csv')
+            occurrences = occurrences.sample(frac=1).reset_index(drop=True)
+            occurrences = occurrences.iloc[:20000]
+            occurrences = occurrences.rename(columns={'covariable_id': 'variable_id'})
+            occurrences = occurrences.to_dict(orient='records')
+
+            print('NUMBER OCCS ', len(occurrences))
+            print(occurrences[0])
 
             df_cov = pd.read_csv(report_cov)
             #print(df_cov)
 
             df_cov = df_cov[df_cov['variable'].isin(covars)]
 
+            checkpoint = time.time()
+            print('BEFORE CALCULATE SCORES', checkpoint -starting_time, 'secs')
+            starting_time = checkpoint
+
             occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences, include_inegi_vars, date)
+            checkpoint = time.time()
+            print('AFTER CALCULATE SCORES', checkpoint -starting_time, 'secs')
+            starting_time = checkpoint
             df_occ = pd.DataFrame(occs)
+            checkpoint = time.time()
+            print('AFTER CREATE DF ', checkpoint -starting_time, 'secs')
+            starting_time = checkpoint
             df_occ = df_occ.sort_values(by='score', ascending=False)
             df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
 

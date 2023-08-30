@@ -379,7 +379,6 @@ def calculate_results_cells_free_mode(df_covars, variables, target, occurrences,
 
     s0 = df_covars.iloc[0]['s0']
     results_covariables = None
-    
     for occ in occurrences:
 
         #print(occ, is_target(occ, target))
@@ -396,6 +395,7 @@ def calculate_results_cells_free_mode(df_covars, variables, target, occurrences,
             df_inegi = pd.read_csv('./reports/inegi_occurrences-' + target + '-' + str(date_occurrence) + '.csv', dtype={'gridid_mun': str})
             score += df_inegi[df_inegi['gridid_mun'] == occ['gridid_mun']]['scores'].iloc[0]
         
+        #print('|', sep='')
         for variable in variables:
             
             #print('VARIABLE', variable, occ[variable if variable != 'hospitalizado' else 'tipo_paciente'])
@@ -409,7 +409,6 @@ def calculate_results_cells_free_mode(df_covars, variables, target, occurrences,
                 print('VARIABLE', variable, occ[variable if variable != 'hospitalizado' else 'tipo_paciente'], ' hasnt score')
         
         occ['score'] = score
-
 
     return occurrences
 
