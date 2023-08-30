@@ -344,7 +344,7 @@ class GetROCCurve(APIView):
             reports = os.listdir('./reports/')
             report_occ = None
             for r in reports:
-                if target in r and date in r and 'occurrences' in r:
+                if target in r and date in r and 'occurrences' in r and r.startswith('dge-'):
                     report_occ = './reports/' + r
                     break
             if report_occ == None:
