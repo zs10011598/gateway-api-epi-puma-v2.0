@@ -414,16 +414,12 @@ class DGEFreeMode(APIView):
             target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
             target_attributes['variable_id__in'] = [5, 2, 3, 7]
             
-            #occurrences = OccurrenceCOVID19.objects.using('covid19').\
-            #    filter(**target_attributes).values()
-            occurrences = pd.read_csv('./reports/occurrences_' + date + '.csv')
-            occurrences = occurrences.sample(frac=1).reset_index(drop=True)
-            occurrences = occurrences.iloc[:5000]
-            occurrences = occurrences.rename(columns={'covariable_id': 'variable_id'})
-            occurrences = occurrences.to_dict(orient='records')
-
-            print('NUMBER OCCS ', len(occurrences))
-            print(occurrences[0])
+            df_occurrences = pd.read_csv('./reports/occurrences_' + date + '.csv')
+            df_occurrences = df_occurrences.sample(frac=1).reset_index(drop=True)
+            df_occurrences = df_occurrences.iloc[:25000]
+            df_occurrences = df_occurrences.rename(columns={'covariable_id': 'variable_id'})
+            #occurrences = occurrences.to_dict(orient='records')
+            #print(occurrences)
 
             df_cov = pd.read_csv(report_cov)
             #print(df_cov)
@@ -434,31 +430,30 @@ class DGEFreeMode(APIView):
             print('BEFORE CALCULATE SCORES', checkpoint -starting_time, 'secs')
             starting_time = checkpoint
 
-            occs = calculate_results_cells_free_mode(df_cov, covars, target, occurrences, include_inegi_vars, date)
+            df_occurrences = calculate_results_cells_free_mode(df_cov, covars, target, df_occurrences, include_inegi_vars, date)
             checkpoint = time.time()
             print('AFTER CALCULATE SCORES', checkpoint -starting_time, 'secs')
             starting_time = checkpoint
-            df_occ = pd.DataFrame(occs)
             checkpoint = time.time()
             print('AFTER CREATE DF ', checkpoint -starting_time, 'secs')
             starting_time = checkpoint
-            df_occ = df_occ.sort_values(by='score', ascending=False)
-            df_occ['target'] = df_occ.apply(lambda x: is_target(x, target), axis=1)
+            df_occurrences = df_occurrences.sort_values(by='score', ascending=False)
+            df_occurrences['target'] = df_occurrences.apply(lambda x: is_target(x, target), axis=1)
 
             #print(df_occ)
 
             score_decil_bar = []
-            N = df_occ.shape[0]
-            N_target = df_occ['target'].sum()
+            N = df_occurrences.shape[0]
+            N_target = df_occurrences['target'].sum()
             recall = 0
             for i in range(10):
                 #print(i*int(N/10), (i+1)*int(N/10))
                 #print(df_occ[i*int(N/10): (i+1)*int(N/10)])
-                recall += df_occ.iloc[i*int(N/10): (i+1)*int(N/10)]['target'].sum()
+                recall += df_occurrences.iloc[i*int(N/10): (i+1)*int(N/10)]['target'].sum()
                 score_decil_bar.append({
                     'bin': 10 - i,
-                    'sum': df_occ.iloc[i*int(N/10): (i+1)*int(N/10)]['score'].sum(),
-                    'mean': df_occ.iloc[i*int(N/10): (i+1)*int(N/10)]['score'].mean(),
+                    'sum': df_occurrences.iloc[i*int(N/10): (i+1)*int(N/10)]['score'].sum(),
+                    'mean': df_occurrences.iloc[i*int(N/10): (i+1)*int(N/10)]['score'].mean(),
                     'recall': recall/N_target
                     })
 
@@ -508,6 +503,7 @@ class DGENets(APIView):
                     .filter(variable_id__in=df_inegi_cov['id'].unique().tolist())\
                     .values('gridid_mun', 'variable_id')
                 df_inegi_occ = pd.DataFrame(df_inegi_occ)
+
             nodes = []
             edges = []
             added_nodes = {}
@@ -515,29 +511,32 @@ class DGENets(APIView):
             print('BEFORE START ', checkpoint -starting_time, 'secs')
             starting_time = checkpoint
             for target in targets:
-                target_attributes = {}
                 delta_period = dt.timedelta(days = 30)
+                #initial_date = dt.datetime.strptime(date, '%Y-%m-%d')
                 final_date = dt.datetime.strptime(date, '%Y-%m-%d') + delta_period
-                if target == 'FALLECIDO':
-                    target_attributes['fecha_def__gte'] = date
-                    target_attributes['fecha_def__lt'] = final_date.strftime('%Y-%m-%d')
-                else:
-                    target_attributes['date_occurrence__gte'] = date
-                    target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
-                target_attributes['variable_id__in'] = [5, 2, 3, 7]
-                is_target_query(target_attributes, target)
-                #print(target_attributes)
-
                 checkpoint = time.time()
                 print('PROCESSING ', target, ' occurrences query ', checkpoint -starting_time, 'secs')
-                occurrences = OccurrenceCOVID19.objects.using('covid19').\
-                    filter(**target_attributes).values('gridid_mun',
+                df_occ = pd.read_csv('./reports/occurrences_' + date + '.csv')
+                df_occ = df_occ[df_occ['covariable_id'].isin([5, 2, 3, 7])]
+                df_occ = df_occ[['gridid_mun', 'fecha_def',
                                 'edad', 'sexo', 'neumonia', 'embarazo',
                                'diabetes', 'epoc', 'asma', 'inmusupr', 'hipertension',
                                'cardiovascular', 'obesidad', 'renal_cronica', 'tabaquismo', 'uci',
-                               'intubado', 'tipo_paciente').distinct()
+                               'intubado', 'tipo_paciente']]
+                if target == 'HOSPITALIZADO':
+                    df_occ = df_occ[df_occ['tipo_paciente'] == 'HOSPITALIZADO']
+                elif target == 'NEUMONIA':
+                    df_occ = df_occ[df_occ['neumonia'] == 'SI']
+                elif target == 'UCI':
+                    df_occ = df_occ[df_occ['uci'] == 'SI']
+                elif target == 'INTUBADO':
+                    df_occ = df_occ[df_occ['intubado'] == 'SI']
+                elif target == 'FALLECIDO':
+                    df_occ = df_occ[df_occ['fecha_def']!='9999-99-99']
+
+                df_occ = df_occ.drop_duplicates()
                 starting_time = checkpoint
-                #print(occurrences.count())
+                #print(df_occ.shape[0])
 
                 checkpoint = time.time()
                 print('PROCESSING ', target, ' reading covariable file ', checkpoint -starting_time, 'secs')
@@ -548,9 +547,8 @@ class DGENets(APIView):
 
                 checkpoint = time.time()
                 print('PROCESSING ', target, ' calculating score ', checkpoint -starting_time, 'secs')
-                df_occ = pd.DataFrame(occurrences)
                 df_occ['edad'] = df_occ['edad'].apply(lambda x: map_age_group(x))
-                print(df_occ)
+                #print(df_occ)
                 starting_time = checkpoint
 
                 target_id = get_random_string(5)
