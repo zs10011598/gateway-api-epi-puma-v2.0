@@ -379,7 +379,11 @@ def calculate_results_cells_free_mode(df_covars, variables, target, df_occurrenc
     s0 = df_covars.iloc[0]['s0']
     df_occurrences['score'] = pd.Series([s0 for i in range(df_occurrences.shape[0])])
     for index, covar in df_covars.iterrows():
-        df_occurrences['score'] += df_occurrences.apply(lambda occ: covar['score'] if occ[covar['variable']]==covar['value'] else 0, axis=1)
+        if covar['variable'] == 'hospitalizado':
+            df_occurrences['score'] += df_occurrences.apply(lambda occ: covar['score'] if occ['tipo_paciente']=='HOSPITALIZADO' else 0, axis=1)
+            #df_occ = df_occ[df_occ['tipo_paciente'] == 'HOSPITALIZADO']
+        else:
+            df_occurrences['score'] += df_occurrences.apply(lambda occ: covar['score'] if occ[covar['variable']]==covar['value'] else 0, axis=1)
     return df_occurrences
 
 

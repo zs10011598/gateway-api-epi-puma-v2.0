@@ -419,7 +419,7 @@ class DGEFreeMode(APIView):
             df_occurrences = df_occurrences.iloc[:10000]
             df_occurrences = df_occurrences.rename(columns={'covariable_id': 'variable_id'})
             #occurrences = occurrences.to_dict(orient='records')
-            #print(occurrences)
+            #print(df_occurrences)
 
             df_cov = pd.read_csv(report_cov)
             #print(df_cov)
@@ -440,7 +440,7 @@ class DGEFreeMode(APIView):
             df_occurrences = df_occurrences.sort_values(by='score', ascending=False)
             df_occurrences['target'] = df_occurrences.apply(lambda x: is_target(x, target), axis=1)
 
-            #print(df_occ)
+            print(df_occurrences)
 
             score_decil_bar = []
             N = df_occurrences.shape[0]
