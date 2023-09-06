@@ -414,12 +414,10 @@ class DGEFreeMode(APIView):
             target_attributes['date_occurrence__lt'] = final_date.strftime('%Y-%m-%d')
             target_attributes['variable_id__in'] = [5, 2, 3, 7]
             
-            df_occurrences = pd.read_csv('./reports/occurrences_' + date + '.csv')
+            df_occurrences = pd.read_csv('./reports/occurrences_' + date + '.csv', dtype={'gridid_mun': str})
             df_occurrences = df_occurrences.sample(frac=1).reset_index(drop=True)
             df_occurrences = df_occurrences.iloc[:10000]
             df_occurrences = df_occurrences.rename(columns={'covariable_id': 'variable_id'})
-            #occurrences = occurrences.to_dict(orient='records')
-            #print(df_occurrences)
 
             df_cov = pd.read_csv(report_cov)
             #print(df_cov)
@@ -440,7 +438,7 @@ class DGEFreeMode(APIView):
             df_occurrences = df_occurrences.sort_values(by='score', ascending=False)
             df_occurrences['target'] = df_occurrences.apply(lambda x: is_target(x, target), axis=1)
 
-            print(df_occurrences)
+            #print(df_occurrences)
 
             score_decil_bar = []
             N = df_occurrences.shape[0]

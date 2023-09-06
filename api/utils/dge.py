@@ -377,7 +377,19 @@ def calculate_results_cells_free_mode(df_covars, variables, target, df_occurrenc
         Description: calculate score and probability for cells
     """
     s0 = df_covars.iloc[0]['s0']
-    df_occurrences['score'] = pd.Series([s0 for i in range(df_occurrences.shape[0])])
+
+    print('s0', s0)
+    if 'gridid_mun' in variables:
+        df_covars_muns = df_covars[df_covars['variable'] == 'gridid_mun'][['value', 'score']]
+        df_covars_muns_map = {row['value']: row['score'] for index, row in df_covars_muns.iterrows()}
+        #print(df_covars_muns_map)
+        df_occurrences['score'] = df_occurrences.apply(lambda x: s0 + (df_covars_muns_map[x['gridid_mun']] if x['gridid_mun'] in df_covars_muns_map.keys() else 0), axis=1)
+    else:
+        df_occurrences['score'] = pd.Series([s0 for i in range(df_occurrences.shape[0])])
+
+    print(df_occurrences)
+
+    df_covars = df_covars[df_covars['variable'] != 'gridid_mun']
     for index, covar in df_covars.iterrows():
         if covar['variable'] == 'hospitalizado':
             df_occurrences['score'] += df_occurrences.apply(lambda occ: covar['score'] if occ['tipo_paciente']=='HOSPITALIZADO' else 0, axis=1)
