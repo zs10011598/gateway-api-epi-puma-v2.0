@@ -22,6 +22,7 @@ class Covariables(APIView):
         covariables = None
         include_inegi_vars = False
         filter_inegi = []
+        print('AAAAAAAAAAAABBBBBBBBBBBB')
 
         try:
             if 'target' in request.data.keys():
@@ -66,7 +67,9 @@ class Covariables(APIView):
                 results_covariables = df.to_dict(orient='records')
                 if include_inegi_vars:
                     df_inegi = pd.read_csv('./reports/inegi_covariables-' + target + '-' + str(initial_date) + '.csv', dtype={'gridid_mun': str})
-                    df_inegi = df_inegi[df_inegi['variable'].isin(filter_inegi)]
+                    if len(filter_inegi) > 0:
+                        df_inegi = df_inegi[df_inegi['variable'].isin(filter_inegi)]
+                    print(df_inegi)
                     for index, row in df_inegi.iterrows():
                         results_covariables.append({
                             'variable': row['variable'],
@@ -392,9 +395,14 @@ class DGEFreeMode(APIView):
             date = request.data['date']
             covars = request.data['covariables']
             include_inegi_vars = False
+            filter_inegi = []
 
             try:
                 include_inegi_vars = request.data['include_inegi_vars']
+                try:
+                    filter_inegi = request.data['filter_inegi']
+                except:
+                    filter_inegi = []
             except:
                 include_inegi_vars = False
 
@@ -424,11 +432,23 @@ class DGEFreeMode(APIView):
 
             df_cov = df_cov[df_cov['variable'].isin(covars)]
 
+            if include_inegi_vars:
+                df_inegi_cov = pd.read_csv('./reports/inegi_covariables-' + target + '-' + str(date) + '.csv', dtype={'gridid_mun': str})
+                if len(filter_inegi) > 0:
+                    df_inegi_cov = df_inegi_cov[df_inegi_cov['variable'].isin(filter_inegi)]
+                df_inegi_cov = df_inegi_cov[['id', 'variable', 'value', 'Nx', 'Ncx', \
+                    'PCX', 'PC', 'Nc', 'N', 'epsilon', 'Nc_', 'Nc_x', 'P_C', 'P_CX', \
+                    's0', 'score']]
+                #print(df_inegi_cov)
+                df_inegi_occ = OccurrenceINEGI2020.objects.using('inegi2020')\
+                    .filter(variable_id__in=df_inegi_cov['id'].unique().tolist())\
+                    .values('gridid_mun', 'variable_id')
+
             checkpoint = time.time()
             print('BEFORE CALCULATE SCORES', checkpoint -starting_time, 'secs')
             starting_time = checkpoint
 
-            df_occurrences = calculate_results_cells_free_mode(df_cov, covars, target, df_occurrences, include_inegi_vars, date)
+            df_occurrences = calculate_results_cells_free_mode(df_cov, covars, target, df_occurrences, include_inegi_vars, filter_inegi, date)
             checkpoint = time.time()
             print('AFTER CALCULATE SCORES', checkpoint -starting_time, 'secs')
             starting_time = checkpoint
@@ -493,14 +513,17 @@ class DGENets(APIView):
 
             if include_inegi_vars:
                 df_inegi_cov = pd.read_csv('./reports/inegi_covariables-' + target + '-' + str(date) + '.csv', dtype={'gridid_mun': str})
-                df_inegi_cov = df_inegi_cov[df_inegi_cov['variable'].isin(filter_inegi)]
+                if len(filter_inegi) > 0:
+                    df_inegi_cov = df_inegi_cov[df_inegi_cov['variable'].isin(filter_inegi)]
                 df_inegi_cov = df_inegi_cov[['id', 'variable', 'value', 'Nx', 'Ncx', \
                     'PCX', 'PC', 'Nc', 'N', 'epsilon', 'Nc_', 'Nc_x', 'P_C', 'P_CX', \
                     's0', 'score']]
+                #print(df_inegi_cov)
                 df_inegi_occ = OccurrenceINEGI2020.objects.using('inegi2020')\
                     .filter(variable_id__in=df_inegi_cov['id'].unique().tolist())\
                     .values('gridid_mun', 'variable_id')
                 df_inegi_occ = pd.DataFrame(df_inegi_occ)
+                #print(df_inegi_occ)
 
             nodes = []
             edges = []
@@ -514,10 +537,10 @@ class DGENets(APIView):
                 final_date = dt.datetime.strptime(date, '%Y-%m-%d') + delta_period
                 checkpoint = time.time()
                 print('PROCESSING ', target, ' occurrences query ', checkpoint -starting_time, 'secs')
-                df_occ = pd.read_csv('./reports/occurrences_' + date + '.csv')
+                df_occ = pd.read_csv('./reports/occurrences_' + date + '.csv', dtype={'gridid_mun': str})
                 df_occ = df_occ[df_occ['covariable_id'].isin([5, 2, 3, 7])]
                 df_occ = df_occ[['gridid_mun', 'fecha_def',
-                                'edad', 'sexo', 'neumonia', 'embarazo',
+                               'edad', 'sexo', 'neumonia', 'embarazo',
                                'diabetes', 'epoc', 'asma', 'inmusupr', 'hipertension',
                                'cardiovascular', 'obesidad', 'renal_cronica', 'tabaquismo', 'uci',
                                'intubado', 'tipo_paciente']]
@@ -571,7 +594,7 @@ class DGENets(APIView):
                                 'occs': df_occ[df_occ[row['variable']] == row['value']].shape[0]})
 
                 if include_inegi_vars:
-                    target_cells = df_occ['gridid_mun'].unique()
+                    target_cells = df_occ['gridid_mun'].unique().tolist()
                     covariable_ids = df_inegi_occ[df_inegi_occ['gridid_mun'].isin(target_cells)]['variable_id'].unique()
                     df_inegi_cov = df_inegi_cov[df_inegi_cov['id'].isin(covariable_ids)]
                     for index, row in df_inegi_cov.iterrows():
@@ -579,13 +602,13 @@ class DGENets(APIView):
                             variable_id = get_random_string(5)
                             nodes.append({'id': variable_id, 'type': 'variable', \
                                         'name': row['variable'] + ':' + row['value'], \
-                                        'occs': df_inegi_occ[df_inegi_occ['variable_id'] == row['id']].shape[0]})
+                                        'occs': row['Nx']})
                             added_nodes[row['variable'] + ':' + row['value']] = variable_id
                         else:
                             variable_id = added_nodes[row['variable'] + ':' + row['value']]
                         edges.append({'target': target_id, 'variable': variable_id, \
                                 'epsilon': row['epsilon'], 'score': row['score'], \
-                                'occs': df_inegi_occ[(df_inegi_occ['variable_id'] == row['id']) & (df_inegi_occ['gridid_mun'].isin(target_cells))].shape[0]})
+                                'occs': row['Ncx']})
                 starting_time = checkpoint
             return Response({'nodes': nodes, 'edges': edges}, status=status.HTTP_200_OK)
         except Exception as e:
