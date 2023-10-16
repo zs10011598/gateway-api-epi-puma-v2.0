@@ -460,6 +460,17 @@ class DGEFreeMode(APIView):
 
             #print(df_occurrences)
 
+            scores_l = []
+            targets_l = []
+            for index, row in df_occurrences.iterrows():
+                #print(index, row)
+                scores_l.append(row['score'])
+                targets_l.append(row['target'])
+            fpr, tpr, thresholds = roc_curve(targets_l, scores_l, pos_label=1)
+            roc_auc = auc(fpr, tpr)
+            fpr_list = fpr.tolist()
+            tpr_list = tpr.tolist()
+
             score_decil_bar = []
             N = df_occurrences.shape[0]
             N_target = df_occurrences['target'].sum()
@@ -475,7 +486,8 @@ class DGEFreeMode(APIView):
                     'recall': recall/N_target
                     })
 
-            return Response({'score_decil_bar': score_decil_bar}, status=status.HTTP_200_OK)
+            return Response({'score_decil_bar': score_decil_bar, 
+                "data_roc":[{"fpr":fpr_list}, {"tpr":tpr_list}, {"auc":roc_auc}]}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'message': 'something was wrong: {0}'.format(str(e))}\
                 , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
