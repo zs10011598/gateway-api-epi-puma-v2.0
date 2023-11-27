@@ -9,6 +9,7 @@ from .views.analysis import Covariables as Cov, CellsEnsamble as Cel, Covariable
 from .views.dge import Covariables as DGECov, Cells as DGECell, GetHistoricalProfile as GHP,\
     AvailableDateAnalysis as ADA, GetProfileCovariable as GPC, GetROCCurve as GROCC, DGEFreeMode as DGEFM, \
     DGENets
+from .views.symptoms import Covariables as SymptCov
 from .views.data_nodes import DataNodes
 #, Cells as Cel, CellsTimeValidation as CTV
 
@@ -48,4 +49,6 @@ urlpatterns = [
     path('dge/roc/', GROCC.as_view(), name='dge_get_roc_curve'),   
     path('dge/free-mode/', DGEFM.as_view(), name='free_mode'),
     path('dge/nets/', DGENets.as_view(), name='dge_nets'),
+
+    path('symptoms/covariables/', SymptCov.as_view(), name='sympt_covariables'),
 ]
