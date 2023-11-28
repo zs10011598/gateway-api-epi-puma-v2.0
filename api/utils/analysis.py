@@ -365,6 +365,7 @@ def calculate_epsilon_cells_ensamble(
         target_cells = list(set([occ['gridid_' + mesh] for occ in occs]))
 
         Nx = len(variable['cells_' + mesh])
+        ##print(variable)
         Ncx = len([cell for cell in target_cells if cell in variable['cells_' + mesh]])
         dict_results['Nx'].append(Nx)
         dict_results['Ncx'].append(Ncx)

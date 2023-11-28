@@ -132,7 +132,6 @@ class CovariablesCellsEnsamble(APIView):
                             .filter(~Q(**{'gridid_' + mesh: None}))\
                             .annotate(tcount=Sum('numeroindividuos'))\
                             .order_by()
-
             except Exception as e:
                 print(str(e))
                 return Response({'ok': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -198,7 +197,6 @@ class CellsEnsamble(APIView):
                             .annotate(tcount=Sum('numeroindividuos'))\
                             .order_by()
                         #print(occs)
-
                 N_occs = occs.count()
                 if validation:
                     train_limit = int(N_occs*0.7)
@@ -214,11 +212,27 @@ class CellsEnsamble(APIView):
                 print(str(e))
                 return Response({'ok': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+            print('occs target train ', len(occs_train))
             data = calculate_epsilon_cells_ensamble(
                 body.data['covariables'], 
                 body.data['covariable_filter'], 
                 occs_train,
                 body.data['mesh'])
+
+            if 'for_specific_cell' in body.data.keys() and body.data['for_specific_cell']:
+
+                if not 'cell_id' in body.data.keys():
+                    return Response({'ok': False, 'message': '`cell_id` not provided'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                cell_covars = []
+                cell_id = body.data['cell_id']
+                for cov in data[0]:
+                    if cell_id in cov['cells']:
+                        cell_covars.append(cov)
+
+                response['ok'] = True
+                response['data'] = cell_covars
+                return Response(response, status=status.HTTP_200_OK)
 
             #print(data)
             response['ok'] = True
