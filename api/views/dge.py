@@ -22,7 +22,6 @@ class Covariables(APIView):
         covariables = None
         include_inegi_vars = False
         filter_inegi = []
-        print('AAAAAAAAAAAABBBBBBBBBBBB')
 
         try:
             if 'target' in request.data.keys():
