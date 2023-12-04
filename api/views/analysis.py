@@ -241,6 +241,14 @@ class CellsEnsamble(APIView):
             id_analysis = save_worldclim_analysis(data[0])
 
             data_score_cell = calculate_score_cells_ensamble(data[0])
+            data_score_cell = sorted(data_score_cell, key=lambda o: o['tscore']) 
+            #print('Data score cell length ', len(data_score_cell))
+            N_data_score_cell = len(data_score_cell)
+            limits = get_limits(N_data_score_cell, 10)
+            for d in range(10):
+                for i in range(limits[d], limits[d+1]+1):
+                    data_score_cell[i]['bin'] = d + 1
+
             response['data_score_cell'] = data_score_cell
 
             percentage_avg = caculate_decil_info(
