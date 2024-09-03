@@ -161,7 +161,6 @@ class GetHistoricalProfile(APIView):
             'obesidad', 'renal_cronica', \
             'tabaquismo']
         target_column_map = {\
-            'HOSPITALIZADO': 'hospitalizado', \
             'NEUMONIA': 'neumonia', \
             'INTUBADO': 'intubado',
             'UCI': 'uci'}
@@ -260,9 +259,11 @@ class GetHistoricalProfile(APIView):
                     #print(df_train['fecha_def'].unique())
                     if data['target'] == 'FALLECIDO':
                         Nc = df_train[df_train['fecha_def']!='9999-99-99'].shape[0]
+                    elif data['target'] == 'HOSPITALIZADO':
+                        Nc = df_train[df_train['tipo_paciente']=='HOSPITALIZADO'].shape[0]
                     elif data['target'] != 'HOSPITALIZADO':
                         target_column = target_column_map[data['target']]
-                        Nc = df_train[df_train[target_column]=='SI' if target_column != 'hospitalizado' else 'HOSPITALIZADO'].shape[0]
+                        Nc = df_train[df_train[target_column]=='SI'].shape[0]
                     
                     probability = Nc/float(percentile_length)
                     periods[date]['bin-{0}'.format(20-i)]['probability'] = probability
